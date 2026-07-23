@@ -36,7 +36,7 @@ export function ReviewActionDialog({ open, onOpenChange, field, mode }) {
   useEffect(() => {
     if (open) {
       setReason("");
-      setReasonCategory("corrected-source");
+      setReasonCategory("corrected-w2-received");
       setNewValue(
         typeof field?.currentValue === "number" ? String(field.currentValue) : field?.currentValue || ""
       );
@@ -60,7 +60,9 @@ export function ReviewActionDialog({ open, onOpenChange, field, mode }) {
       return;
     }
     keepCurrent(field.id, reason, reasonCategory);
-    toast.success("Kept current value", { description: field.label });
+    toast.success("Kept current value", {
+      description: `Reason recorded in audit trail for ${field.label}.`,
+    });
     onOpenChange(false);
   };
 
@@ -71,20 +73,18 @@ export function ReviewActionDialog({ open, onOpenChange, field, mode }) {
     }
     const parsed =
       typeof field.currentValue === "number" ? Number(newValue.replace(/[$,\s]/g, "")) : newValue;
-    manualCorrection(field.id, parsed, reason);
+    manualCorrection(field.id, parsed, reason, reasonCategory);
     toast.success("Manual correction saved", {
-      description: `${field.label} updated to ${
-        typeof parsed === "number" ? formatCurrency(parsed) : parsed
-      }`,
+      description: `${field.label} updated. Original AI suggestion preserved in History.`,
     });
     onOpenChange(false);
   };
 
   const REASONS = [
-    { value: "corrected-source", label: "Corrected source document exists" },
-    { value: "source-incomplete", label: "Source was incomplete" },
-    { value: "tax-treatment", label: "Tax treatment differs" },
-    { value: "prior-adjustment", label: "Prior adjustment already applied" },
+    { value: "corrected-w2-received", label: "Corrected W-2 received" },
+    { value: "ocr-error", label: "OCR error" },
+    { value: "tax-treatment-differs", label: "Tax treatment differs" },
+    { value: "supporting-documentation", label: "Supporting documentation" },
     { value: "other", label: "Other (explain below)" },
   ];
 

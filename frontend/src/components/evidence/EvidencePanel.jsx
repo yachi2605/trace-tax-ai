@@ -92,6 +92,40 @@ export function EvidencePanel({ field, onSelectField }) {
                 <LockedExplanation field={field} onSelectComponent={(c) => onSelectField?.(c.id)} />
                 <RecommendationProvenance field={field} />
               </>
+            ) : field.status === "manually-corrected" || (field.status === "verified" && field.lastVerifiedBy) ? (
+              <div className="space-y-3">
+                <div className="border border-emerald-200 rounded-md p-3 bg-emerald-50 flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" strokeWidth={2.25} />
+                  <div>
+                    <p className="text-sm font-medium text-emerald-900">
+                      {field.status === "manually-corrected"
+                        ? "Manually corrected"
+                        : "Verified by reviewer"}
+                    </p>
+                    <p className="text-xs text-emerald-800 mt-0.5">
+                      {field.lastVerifiedBy} · {formatDate(field.lastVerifiedAt, "long")}
+                    </p>
+                  </div>
+                </div>
+                {field.status === "manually-corrected" && (
+                  <PinnedAiRecommendationCard field={field} />
+                )}
+                <ValueComparison field={field} />
+                {field.confidence && <ConfidenceIndicator confidence={field.confidence} />}
+                <RecommendationProvenance field={field} />
+                {field.issue && (
+                  <div className="border border-slate-200 rounded-md p-3 bg-slate-50">
+                    <p className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">
+                      Original issue (resolved)
+                    </p>
+                    <p className="text-sm font-medium text-slate-800 mb-1">{field.issue.title}</p>
+                    <p className="text-xs text-slate-600 leading-relaxed">{field.issue.summary}</p>
+                    <p className="text-[11px] text-slate-500 italic mt-1.5">
+                      See History tab for the full decision trail.
+                    </p>
+                  </div>
+                )}
+              </div>
             ) : field.issue ? (
               <>
                 {field.assistantNote && <AssistantNoteCard note={field.assistantNote} />}
@@ -174,25 +208,6 @@ export function EvidencePanel({ field, onSelectField }) {
                   </div>
                 )}
               </>
-            ) : field.status === "verified" || field.status === "manually-corrected" ? (
-              <div className="space-y-3">
-                <div className="border border-emerald-200 rounded-md p-3 bg-emerald-50 flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" strokeWidth={2.25} />
-                  <div>
-                    <p className="text-sm font-medium text-emerald-900">
-                      {field.status === "manually-corrected"
-                        ? "Manually corrected"
-                        : "Verified by reviewer"}
-                    </p>
-                    <p className="text-xs text-emerald-800 mt-0.5">
-                      {field.lastVerifiedBy} · {formatDate(field.lastVerifiedAt, "long")}
-                    </p>
-                  </div>
-                </div>
-                <ValueComparison field={field} />
-                {field.confidence && <ConfidenceIndicator confidence={field.confidence} />}
-                <RecommendationProvenance field={field} />
-              </div>
             ) : (
               <div className="space-y-3">
                 <div className="border border-slate-200 rounded-md p-3 bg-slate-50 text-sm text-slate-600">
@@ -303,6 +318,65 @@ function EvidenceTab({ value, label, testId }) {
 }
 
 /* -------- Trust / explainability primitives (Challenge 10) -------- */
+
+/**
+ * PinnedAiRecommendationCard — a persistent, always-visible reminder of the
+ * original AI recommendation on any manually-corrected field. This is the
+ * visible proof that the AI's original suggestion is never lost after a
+ * human override.
+ */
+function PinnedAiRecommendationCard({ field }) {
+  // Find the most recent correction snapshot
+  const lastCorrection = (field.correctionHistory || [])
+    .slice()
+    .reverse()
+    .find((c) => c.aiRecommendation);
+
+  const snapshot = lastCorrection?.aiRecommendation;
+  if (!snapshot) return null;
+
+  return (
+    <div
+      className="border border-sky-200 rounded-md bg-sky-50 overflow-hidden"
+      data-testid="pinned-ai-recommendation"
+    >
+      <div className="px-3 py-2 border-b border-sky-200 bg-sky-100/60 flex items-center gap-2">
+        <Sparkles className="w-3.5 h-3.5 text-sky-800" strokeWidth={2.25} />
+        <p className="text-[10px] uppercase tracking-wider text-sky-900 font-semibold">
+          Original AI recommendation · preserved
+        </p>
+      </div>
+      <div className="px-3 py-2 space-y-1">
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <span className="text-[10px] uppercase tracking-wider text-slate-500">Suggested</span>
+          <span className="font-ibm-mono tabular-nums text-sm font-semibold text-slate-900">
+            {snapshot.suggestedValue !== null && snapshot.suggestedValue !== undefined
+              ? typeof snapshot.suggestedValue === "number"
+                ? formatCurrency(snapshot.suggestedValue)
+                : snapshot.suggestedValue
+              : "—"}
+          </span>
+          {snapshot.confidence && (
+            <span className="text-[10px] text-slate-500 font-ibm-mono">
+              · {snapshot.confidence.pct}% {snapshot.confidence.level}
+            </span>
+          )}
+        </div>
+        {snapshot.sourceRef?.docId && (
+          <p className="text-[11px] text-slate-600">
+            Source:{" "}
+            <span className="font-ibm-mono text-slate-800">{snapshot.sourceRef.docId}</span>
+            {snapshot.sourceRef.page && <> · page {snapshot.sourceRef.page}</>}
+          </p>
+        )}
+        <p className="text-[11px] text-slate-500 italic pt-1">
+          You overrode this on {formatDate(lastCorrection.timestamp, "long")}. Open the History tab
+          for the full audit trail.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 function AssistantNoteCard({ note }) {
   return (
@@ -555,45 +629,78 @@ function ConflictResolver({ field, onResolve }) {
   );
 }
 
+/**
+ * FieldHistory — per-field audit trail.
+ *
+ * Each human decision is displayed as a rich card with four clearly labeled
+ * sections:
+ *   1. AI recommendation (snapshot taken at the moment of decision)
+ *   2. Human decision (what the reviewer did, with before → after)
+ *   3. Reason (category + free-text explanation)
+ *   4. Timestamp + actor
+ *
+ * The AI recommendation snapshot is stored per correction event so the
+ * original AI suggestion is preserved forever — even after a manual override.
+ */
+const REASON_CATEGORY_LABELS = {
+  "corrected-w2-received": "Corrected W-2 received",
+  "ocr-error": "OCR error",
+  "tax-treatment-differs": "Tax treatment differs",
+  "supporting-documentation": "Supporting documentation",
+  other: "Other",
+  "accept-ai": "Accepted AI as-is",
+};
+
+const DECISION_META = {
+  "accept-ai": {
+    label: "Accepted AI suggestion",
+    icon: CheckCircle2,
+    tint: "emerald",
+    verb: "accepted",
+  },
+  "keep-current": {
+    label: "Rejected AI · Kept current value",
+    icon: FileWarning,
+    tint: "slate",
+    verb: "rejected",
+  },
+  "manual-correction": {
+    label: "Manual correction",
+    icon: MessageSquareText,
+    tint: "indigo",
+    verb: "changed",
+  },
+  "resolve-conflict": {
+    label: "Resolved conflicting sources",
+    icon: GitBranch,
+    tint: "orange",
+    verb: "resolved",
+  },
+};
+
 function FieldHistory({ field }) {
-  // Combine correction history + initial AI events + verification events
-  const events = [];
+  const humanEvents = (field.correctionHistory || []).map((c) => ({ kind: "human", data: c }));
 
-  if (field.correctionHistory?.length) {
-    field.correctionHistory.forEach((c) => {
-      const map = {
-        "accept-ai": { label: "Accepted AI suggestion", icon: CheckCircle2, color: "emerald" },
-        "keep-current": { label: "Rejected AI suggestion (kept current)", icon: FileWarning, color: "slate" },
-        "manual-correction": { label: "Manual correction", icon: FileText, color: "indigo" },
-        "resolve-conflict": { label: "Resolved conflict", icon: GitBranch, color: "orange" },
-      };
-      const m = map[c.action] || map["manual-correction"];
-      const Icon = m.icon;
-      events.push({
-        icon: <Icon className={`w-3.5 h-3.5 text-${m.color}-700`} />,
-        actor: c.actor,
-        title: m.label,
-        timestamp: c.timestamp,
-        detail:
-          c.reason +
-          (c.action === "manual-correction"
-            ? ` · Prior ${
-                typeof c.priorValue === "number" ? formatCurrency(c.priorValue) : c.priorValue
-              } → New ${typeof c.newValue === "number" ? formatCurrency(c.newValue) : c.newValue}`
-            : ""),
-      });
-    });
-  }
+  const aiEvent =
+    field.evidence?.transformation
+      ? {
+          kind: "ai",
+          data: {
+            timestamp: "2026-01-09T14:03:00Z",
+            summary: field.evidence.transformation.summary,
+            suggestedValue: field.aiSuggestedValue,
+            confidence: field.confidence,
+          },
+        }
+      : null;
 
-  if (field.evidence?.transformation) {
-    events.push({
-      icon: <Sparkles className="w-3.5 h-3.5 text-sky-700" />,
-      actor: "TraceTax AI",
-      title: "AI extracted value",
-      timestamp: "2026-01-09T14:03:00Z",
-      detail: field.evidence.transformation.summary,
-    });
-  }
+  const events = [...humanEvents];
+  if (aiEvent) events.push(aiEvent);
+
+  // newest first
+  events.sort(
+    (a, b) => new Date(b.data.timestamp).getTime() - new Date(a.data.timestamp).getTime()
+  );
 
   if (events.length === 0) {
     return (
@@ -603,34 +710,199 @@ function FieldHistory({ field }) {
     );
   }
 
-  // newest first
-  events.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  return (
+    <div className="space-y-2.5">
+      {events.map((e, i) =>
+        e.kind === "ai" ? (
+          <AiExtractionEvent key={i} data={e.data} />
+        ) : (
+          <HumanDecisionEvent key={i} data={e.data} field={field} />
+        )
+      )}
+    </div>
+  );
+}
+
+function AiExtractionEvent({ data }) {
+  return (
+    <div
+      className="border border-sky-200 rounded-md bg-sky-50 overflow-hidden"
+      data-testid="field-history-ai-event"
+    >
+      <div className="px-3 py-2 border-b border-sky-200 bg-sky-100/60 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-3.5 h-3.5 text-sky-800" strokeWidth={2.25} />
+          <span className="text-[10px] uppercase tracking-wider text-sky-900 font-semibold">
+            AI extracted value
+          </span>
+        </div>
+        <span className="text-[10px] text-sky-800 font-ibm-mono tabular-nums">
+          {formatDate(data.timestamp, "relative")}
+        </span>
+      </div>
+      <div className="px-3 py-2 space-y-1">
+        <p className="text-xs text-slate-700 leading-relaxed">{data.summary}</p>
+        {(data.suggestedValue !== null && data.suggestedValue !== undefined) && (
+          <p className="text-[11px] text-slate-600">
+            Recommendation:{" "}
+            <span className="font-ibm-mono tabular-nums font-semibold text-slate-900">
+              {typeof data.suggestedValue === "number"
+                ? formatCurrency(data.suggestedValue)
+                : data.suggestedValue}
+            </span>
+            {data.confidence && (
+              <span className="ml-1.5 text-slate-500">
+                · {data.confidence.pct}% {data.confidence.level} confidence
+              </span>
+            )}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function HumanDecisionEvent({ data, field }) {
+  const meta = DECISION_META[data.action] || DECISION_META["manual-correction"];
+  const Icon = meta.icon;
+  const tint = meta.tint;
+
+  const aiRec = data.aiRecommendation;
+  const showValueChange =
+    data.action === "manual-correction" ||
+    (data.action === "accept-ai" && data.priorValue !== data.newValue);
+
+  const reasonCategoryLabel = REASON_CATEGORY_LABELS[data.reasonCategory] || null;
+
+  const tintClasses = {
+    emerald: "border-emerald-200 bg-emerald-50",
+    slate: "border-slate-200 bg-slate-50",
+    indigo: "border-indigo-200 bg-indigo-50",
+    orange: "border-orange-200 bg-orange-50",
+  }[tint];
+
+  const iconClasses = {
+    emerald: "text-emerald-700",
+    slate: "text-slate-700",
+    indigo: "text-indigo-700",
+    orange: "text-orange-700",
+  }[tint];
 
   return (
-    <div className="space-y-2">
-      {events.map((e, i) => (
-        <div
-          key={i}
-          className="border border-slate-200 rounded-md p-2.5 bg-white"
-          data-testid="field-history-event"
-        >
-          <div className="flex items-start gap-2">
-            <div className="mt-0.5 shrink-0">{e.icon}</div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-medium text-slate-900">{e.title}</p>
-                <span className="text-[10px] text-slate-500 font-ibm-mono shrink-0">
-                  {formatDate(e.timestamp, "relative")}
+    <div
+      className={cn("border rounded-md overflow-hidden bg-white", tintClasses)}
+      data-testid="field-history-human-event"
+    >
+      {/* Header — Decision + timestamp */}
+      <div className="px-3 py-2 flex items-center justify-between border-b border-current/10 bg-white/60">
+        <div className="flex items-center gap-2">
+          <Icon className={cn("w-3.5 h-3.5", iconClasses)} strokeWidth={2.25} />
+          <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-800">
+            {meta.label}
+          </span>
+        </div>
+        <span className="text-[10px] text-slate-500 font-ibm-mono tabular-nums">
+          {formatDate(data.timestamp, "long")}
+        </span>
+      </div>
+
+      <div className="px-3 py-2.5 space-y-2.5 bg-white">
+        {/* Section 1 — AI recommendation snapshot */}
+        {aiRec && (
+          <AuditSection label="AI recommendation" icon={Sparkles}>
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <span className="font-ibm-mono tabular-nums text-xs font-semibold text-sky-900">
+                {aiRec.suggestedValue !== null && aiRec.suggestedValue !== undefined
+                  ? typeof aiRec.suggestedValue === "number"
+                    ? formatCurrency(aiRec.suggestedValue)
+                    : aiRec.suggestedValue
+                  : "No suggestion"}
+              </span>
+              {aiRec.confidence && (
+                <span className="text-[10px] text-slate-500 font-ibm-mono">
+                  · {aiRec.confidence.pct}% {aiRec.confidence.level} confidence
                 </span>
-              </div>
-              <p className="text-[11px] text-slate-500 mt-0.5">by {e.actor}</p>
-              {e.detail && (
-                <p className="text-xs text-slate-600 mt-1 leading-relaxed">{e.detail}</p>
               )}
             </div>
-          </div>
-        </div>
-      ))}
+            {aiRec.sourceRef?.docId && (
+              <p className="text-[10px] text-slate-500 mt-0.5">
+                from{" "}
+                <span className="font-ibm-mono">{aiRec.sourceRef.docId}</span>
+                {aiRec.sourceRef.page && <> · page {aiRec.sourceRef.page}</>}
+              </p>
+            )}
+          </AuditSection>
+        )}
+
+        {/* Section 2 — Human decision */}
+        <AuditSection label="Human decision" icon={Icon}>
+          <p className="text-xs text-slate-800">
+            <span className="font-medium">{data.actor}</span>{" "}
+            <span className="text-slate-600">{meta.verb} the AI suggestion.</span>
+          </p>
+          {showValueChange && (
+            <p
+              className="text-[11px] text-slate-700 mt-1 flex items-baseline gap-1.5 flex-wrap"
+              data-testid="value-change-row"
+            >
+              <span className="text-[10px] text-slate-500 uppercase tracking-wider">Value:</span>
+              <span className="font-ibm-mono tabular-nums line-through text-slate-500">
+                {typeof data.priorValue === "number" ? formatCurrency(data.priorValue) : data.priorValue}
+              </span>
+              <ArrowRight className="w-3 h-3 text-slate-400" strokeWidth={2.5} />
+              <span className="font-ibm-mono tabular-nums font-semibold text-slate-900">
+                {typeof data.newValue === "number" ? formatCurrency(data.newValue) : data.newValue}
+              </span>
+            </p>
+          )}
+          {!showValueChange && (
+            <p className="text-[11px] text-slate-600 mt-1">
+              Value unchanged:{" "}
+              <span className="font-ibm-mono tabular-nums font-semibold text-slate-900">
+                {typeof data.newValue === "number" ? formatCurrency(data.newValue) : data.newValue}
+              </span>
+            </p>
+          )}
+        </AuditSection>
+
+        {/* Section 3 — Reason */}
+        <AuditSection label="Reason" icon={HelpCircle}>
+          {reasonCategoryLabel && (
+            <p
+              className="inline-flex items-center gap-1 border border-slate-200 rounded px-1.5 py-0.5 text-[10px] font-medium bg-slate-50 text-slate-700 mb-1"
+              data-testid="audit-reason-category"
+            >
+              {reasonCategoryLabel}
+            </p>
+          )}
+          <p className="text-xs text-slate-700 leading-relaxed" data-testid="audit-reason-text">
+            {data.reason || <span className="italic text-slate-500">No explanation provided.</span>}
+          </p>
+        </AuditSection>
+
+        {/* Section 4 — Actor + timestamp */}
+        <AuditSection label="Recorded" icon={MessageSquareText}>
+          <p className="text-[11px] text-slate-600">
+            <span className="font-medium text-slate-800">{data.actor}</span>
+            {data.actorRole && <span className="text-slate-500"> · {data.actorRole}</span>}
+            <span className="text-slate-500"> · {formatDate(data.timestamp, "long")}</span>
+          </p>
+        </AuditSection>
+      </div>
+    </div>
+  );
+}
+
+function AuditSection({ label, icon: Icon, children }) {
+  return (
+    <div className="flex items-start gap-2">
+      <Icon className="w-3 h-3 text-slate-400 mt-1 shrink-0" strokeWidth={2.25} />
+      <div className="flex-1 min-w-0">
+        <p className="text-[9px] uppercase tracking-widest text-slate-500 font-semibold mb-0.5">
+          {label}
+        </p>
+        <div>{children}</div>
+      </div>
     </div>
   );
 }

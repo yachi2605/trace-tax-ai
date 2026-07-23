@@ -9,6 +9,27 @@ import { RETURNS, CURRENT_USER } from "@/data/returns";
 
 const AppStateContext = createContext(null);
 
+// Capture a full snapshot of the AI recommendation at the moment of decision.
+// This is what gets stored in each correctionHistory entry so the AI suggestion
+// is *never* lost after a human override.
+function snapshotAiRecommendation(f) {
+  return {
+    suggestedValue: f.aiSuggestedValue,
+    confidence: f.confidence
+      ? { level: f.confidence.level, pct: f.confidence.pct, reason: f.confidence.reason }
+      : null,
+    sourceRef: f.evidence
+      ? {
+          docId: f.evidence.docId || null,
+          page: f.evidence.page || null,
+          regionId: f.evidence.regionId || null,
+          transformationType: f.evidence.transformation?.type || null,
+          sourceValue: f.evidence.sourceValue ?? null,
+        }
+      : null,
+  };
+}
+
 const initialState = {
   currentUser: CURRENT_USER,
   returns: RETURNS,
@@ -47,11 +68,14 @@ function reducer(state, action) {
           {
             id: `ch-${Date.now()}`,
             actor: state.currentUser.name,
+            actorRole: "CPA",
             action: "accept-ai",
             priorValue,
             newValue,
             aiSuggestedValue: f.aiSuggestedValue,
-            reason: "Accepted AI suggestion",
+            aiRecommendation: snapshotAiRecommendation(f),
+            reason: "Accepted AI suggestion as-is",
+            reasonCategory: "accept-ai",
             timestamp: new Date().toISOString(),
           },
         ],
@@ -89,10 +113,12 @@ function reducer(state, action) {
           {
             id: `ch-${Date.now()}`,
             actor: state.currentUser.name,
+            actorRole: "CPA",
             action: "keep-current",
             priorValue: f.currentValue,
             newValue: f.currentValue,
             aiSuggestedValue: f.aiSuggestedValue,
+            aiRecommendation: snapshotAiRecommendation(f),
             reason: action.reason || "Kept current value",
             reasonCategory: action.reasonCategory || "other",
             timestamp: new Date().toISOString(),
@@ -135,11 +161,14 @@ function reducer(state, action) {
           {
             id: `ch-${Date.now()}`,
             actor: state.currentUser.name,
+            actorRole: "CPA",
             action: "manual-correction",
             priorValue,
             newValue: action.newValue,
             aiSuggestedValue: f.aiSuggestedValue,
+            aiRecommendation: snapshotAiRecommendation(f),
             reason: action.reason,
+            reasonCategory: action.reasonCategory || "other",
             timestamp: new Date().toISOString(),
           },
         ],
@@ -244,8 +273,8 @@ export function AppStateProvider({ children }) {
     []
   );
   const manualCorrection = useCallback(
-    (fieldId, newValue, reason) =>
-      dispatch({ type: "MANUAL_CORRECTION", fieldId, newValue, reason }),
+    (fieldId, newValue, reason, reasonCategory) =>
+      dispatch({ type: "MANUAL_CORRECTION", fieldId, newValue, reason, reasonCategory }),
     []
   );
   const resolveConflictWith = useCallback(
