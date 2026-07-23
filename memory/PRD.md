@@ -80,6 +80,16 @@ infrastructure, real OCR, or a real AI model.
 - ✅ Reasoning tab reworded: "What did the AI do?" → "What I checked". "Recommended action" → "What I'd suggest". Removed all references to "the AI"; tone is now first-person assistant.
 - ✅ 19/19 regression + new-feature tests passed (iteration_2.json). No layout redesign — all previous data-testids preserved.
 
+## What's been enhanced (2026-01-14 · Manual Override & Audit Trail pass)
+
+- ✅ Reason category options now match the exact list requested: **Corrected W-2 received / OCR error / Tax treatment differs / Supporting documentation / Other**.
+- ✅ Every correction (accept-AI, keep-current, manual override, resolve-conflict) now snapshots the full AI recommendation at the moment of decision — value + confidence (level, pct, reason) + source ref (docId, page, regionId, transformation type). Stored per correctionHistory entry so the AI suggestion is *never* lost.
+- ✅ **New persistent "Original AI recommendation · preserved" card** — pinned to the Summary tab of any manually-corrected field. Shows suggested value + confidence + source doc/page + override timestamp. The AI suggestion is now visible in three places simultaneously: the row itself, the Summary tab pinned card, and the History tab audit trail.
+- ✅ **History tab rewritten** as rich four-section audit cards. Every human decision shows: (1) **AI recommendation** — snapshot with value, confidence, and source ref; (2) **Human decision** — actor + action + strikethrough prior value → new value; (3) **Reason** — category chip + free-text explanation; (4) **Recorded** — actor + role + timestamp. A separate blue card also records the original AI extraction event.
+- ✅ Verified/manually-corrected branch now takes precedence over the issue branch in the Summary tab, so the resolved state is properly displayed instead of the original open-issue view.
+- ✅ Toast copy updated to remind the reviewer that the original AI suggestion is preserved in History.
+- ✅ 10/10 audit-trail regression + new-feature tests passed (iteration_3.json).
+
 ## Prioritized backlog (P0/P1/P2)
 
 **P1** (would enhance case study submission):
