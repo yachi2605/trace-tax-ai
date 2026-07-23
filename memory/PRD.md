@@ -90,6 +90,28 @@ infrastructure, real OCR, or a real AI model.
 - ✅ Toast copy updated to remind the reviewer that the original AI suggestion is preserved in History.
 - ✅ 10/10 audit-trail regression + new-feature tests passed (iteration_3.json).
 
+## What's been enhanced (2026-01-14 · Source Traceability + UX Polish pass)
+
+**Traceability (Challenge 01):**
+- ✅ New `TraceabilityChain` component — visualizes the full audit story on the Source tab: source document → numbered transformation steps (Locate source → Extract raw value → Normalize → Map to return field) → terminal Return field node, connected by arrows. Aggregation mode lists every component source with its value.
+- ✅ New `SupportingDocuments` component — lists every document that contributes to a value, distinguishing primary (star badge) from supporting docs, with role notes and upload dates.
+- ✅ `transformation.steps` restructured from strings to `{label, detail, value}` objects for richer step-level display.
+
+**UX polish (Intuit-caliber):**
+- ✅ Button labels rewritten action-first: "Accept AI" → "Use suggested value", "Keep current" → "Keep current value", "Enter different value" → "Enter my own value", confirm buttons match.
+- ✅ Dialog titles rewritten as questions ("Use the suggested value?" / "Keep the current value?" / "Enter your own value").
+- ✅ Terminology standardized: "AI-generated" / "AI suggests" / "AI recommended" all consolidated to "Suggested value" in every user-facing surface.
+- ✅ History decision labels rewritten action-first ("Accepted AI suggestion" → "Used suggested value"; "Rejected AI · Kept current value" → "Kept current value"; "Manual correction" → "Entered own value").
+- ✅ Empty states added / improved: queue ("Clear search" / "Show all returns"), section ("nothing to review here"), activity ("nothing recorded yet"), section-completed callout with warm success copy.
+- ✅ Toast microcopy softened and consistent — "Suggested value applied · Wages, salaries, and tips is now Verified."
+
+**Interaction feedback:**
+- ✅ Row hover has subtle lift + shadow. Status badge fades in when a row changes state (accept/keep/manual all animate).
+- ✅ Focus rings visible on all action buttons; every icon-only button has aria-label.
+- ✅ Global skip-to-main-content link for keyboard users. `main` region has `tabIndex=-1` for skip-link targeting.
+
+**Testing status:** 100% pass on all 15 iteration-4 checks. Zero console errors. All prior data-testids preserved.
+
 ## Prioritized backlog (P0/P1/P2)
 
 **P1** (would enhance case study submission):
