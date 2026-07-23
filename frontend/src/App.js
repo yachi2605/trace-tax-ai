@@ -13,7 +13,7 @@ function AppShell({ children }) {
   return (
     <div className="h-screen w-full flex flex-col bg-slate-50 overflow-hidden font-ibm-plex text-slate-900">
       <TopBar />
-      <div className="flex-1 flex overflow-hidden">{children}</div>
+      <div id="main-content" className="flex-1 flex overflow-hidden" tabIndex={-1}>{children}</div>
     </div>
   );
 }
@@ -22,6 +22,12 @@ export default function App() {
   return (
     <AppStateProvider>
       <BrowserRouter>
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-3 focus:py-2 focus:bg-navy focus:text-white focus:rounded focus:text-sm focus:font-medium"
+        >
+          Skip to main content
+        </a>
         <Routes>
           <Route
             path="/"

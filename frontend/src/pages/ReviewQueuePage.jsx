@@ -255,11 +255,13 @@ function EmptyState({ search, filter, onClear }) {
       <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3">
         <Inbox className="w-6 h-6 text-slate-400" strokeWidth={1.75} />
       </div>
-      <p className="text-sm font-medium text-slate-800 mb-1">No returns match this view</p>
-      <p className="text-xs text-slate-500 max-w-[320px] text-center leading-relaxed">
+      <p className="text-sm font-medium text-slate-800 mb-1">
+        {search ? "No matching returns" : "Nothing in this view yet"}
+      </p>
+      <p className="text-xs text-slate-500 max-w-[340px] text-center leading-relaxed">
         {search
-          ? `No returns match "${search}". Try clearing the search or switching filters.`
-          : `Nothing in the "${FILTERS.find((f) => f.id === filter)?.label}" bucket right now.`}
+          ? `No client matches "${search}". Try a different spelling, or clear the search to see all returns.`
+          : `Returns that fall into "${FILTERS.find((f) => f.id === filter)?.label}" will appear here as they progress through review.`}
       </p>
       <Button
         variant="outline"
@@ -268,7 +270,8 @@ function EmptyState({ search, filter, onClear }) {
         onClick={onClear}
         data-testid="queue-empty-clear"
       >
-        <Filter className="w-3 h-3 mr-1" /> Reset filters
+        <Filter className="w-3 h-3 mr-1.5" strokeWidth={2.25} />
+        {search ? "Clear search" : "Show all returns"}
       </Button>
     </div>
   );

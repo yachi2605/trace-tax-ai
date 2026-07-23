@@ -29,11 +29,21 @@ export function ActivityPage() {
         </div>
 
         <div className="border border-slate-200 rounded-md bg-white overflow-hidden">
-          <ol className="divide-y divide-slate-200">
-            {activity.map((evt) => (
-              <ActivityRow key={evt.id} event={evt} field={fields[evt.fieldId]} />
-            ))}
-          </ol>
+          {activity.length === 0 ? (
+            <div className="py-14 flex flex-col items-center text-center px-6">
+              <Icons.Inbox className="w-8 h-8 text-slate-300 mb-2" strokeWidth={1.5} />
+              <p className="text-sm font-medium text-slate-800 mb-1">Nothing recorded yet</p>
+              <p className="text-xs text-slate-500 max-w-[300px] leading-relaxed">
+                Every extraction, flag, and human decision on this return will appear here.
+              </p>
+            </div>
+          ) : (
+            <ol className="divide-y divide-slate-200">
+              {activity.map((evt) => (
+                <ActivityRow key={evt.id} event={evt} field={fields[evt.fieldId]} />
+              ))}
+            </ol>
+          )}
         </div>
       </div>
     </main>

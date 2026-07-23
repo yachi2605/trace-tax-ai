@@ -184,13 +184,9 @@ export function ReturnWorkspacePage() {
             <SectionHeader sectionMeta={sectionMeta} count={sectionFields.length} />
 
             {sectionFields.length === 0 ? (
-              <div className="border border-dashed border-slate-300 rounded-md py-12 text-center bg-white mt-4">
-                <p className="text-sm text-slate-500">
-                  No fields defined for this section yet.
-                </p>
-              </div>
+              <EmptySectionState sectionLabel={sectionMeta.label} />
             ) : (
-              <div className="space-y-2 mt-4">
+              <div className="space-y-2 mt-4" role="list" aria-label={`${sectionMeta.label} fields`}>
                 {sectionFields.map((f) => (
                   <TaxFieldRow
                     key={f.id}
@@ -207,13 +203,19 @@ export function ReturnWorkspacePage() {
               ["verified", "read-only", "locked", "manually-corrected"].includes(f.status)
             ) && (
               <div
-                className="mt-4 border border-emerald-200 bg-emerald-50 rounded-md p-3 flex items-center gap-2"
+                className="mt-4 border border-emerald-200 bg-emerald-50 rounded-md p-3 flex items-start gap-2"
                 data-testid="section-completed-callout"
+                role="status"
               >
-                <CheckCircle2 className="w-4 h-4 text-emerald-700" strokeWidth={2.25} />
-                <p className="text-xs text-emerald-900">
-                  All fields in this section are resolved.
-                </p>
+                <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" strokeWidth={2.25} />
+                <div>
+                  <p className="text-sm text-emerald-900 font-medium">
+                    This section is fully reviewed
+                  </p>
+                  <p className="text-xs text-emerald-800/90 mt-0.5">
+                    Every field is verified, locked, or has a recorded decision. Nice work.
+                  </p>
+                </div>
               </div>
             )}
           </div>
@@ -257,6 +259,20 @@ function SectionHeader({ sectionMeta, count }) {
       <span className="text-[11px] text-slate-500 font-ibm-mono">
         {count} field{count === 1 ? "" : "s"}
       </span>
+    </div>
+  );
+}
+
+function EmptySectionState({ sectionLabel }) {
+  return (
+    <div className="border border-dashed border-slate-300 rounded-md py-14 text-center bg-white mt-4 px-6">
+      <CheckCircle2 className="w-8 h-8 text-slate-300 mx-auto mb-2" strokeWidth={1.5} />
+      <p className="text-sm font-medium text-slate-800 mb-1">
+        {sectionLabel} — nothing to review here
+      </p>
+      <p className="text-xs text-slate-500 max-w-[340px] mx-auto leading-relaxed">
+        This section has no reportable activity for this return, so we haven't added any fields.
+      </p>
     </div>
   );
 }

@@ -70,6 +70,9 @@ export function TaxFieldRow({ field, isSelected, onSelect }) {
         data-testid={`tax-field-row-${field.id}`}
         role="button"
         tabIndex={0}
+        aria-label={`${field.label}. Status: ${field.status}. ${
+          typeof field.currentValue === "number" ? `Value ${formatCurrency(field.currentValue)}.` : ""
+        } Click to review.`}
         onClick={() => onSelect?.(field.id)}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
@@ -78,7 +81,8 @@ export function TaxFieldRow({ field, isSelected, onSelect }) {
           }
         }}
         className={cn(
-          "group border rounded-md bg-white p-3 cursor-pointer transition-colors",
+          "group border rounded-md bg-white p-3 cursor-pointer transition-all duration-150",
+          "hover:shadow-sm hover:-translate-y-[1px]",
           borderClass
         )}
       >
@@ -92,7 +96,7 @@ export function TaxFieldRow({ field, isSelected, onSelect }) {
             <p className="text-[11px] text-slate-500 font-ibm-mono mt-0.5">{field.formRef}</p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div key={field.status} className="flex items-center gap-2 shrink-0 animate-fade-in">
             <StatusBadge status={field.status} />
           </div>
         </div>
@@ -116,7 +120,7 @@ export function TaxFieldRow({ field, isSelected, onSelect }) {
           >
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-[10px] uppercase tracking-wider text-sky-800 font-medium">
-                AI suggests
+                Suggested value
               </span>
               <span className="font-ibm-mono tabular-nums text-sm font-semibold text-sky-900">
                 {typeof field.aiSuggestedValue === "number"
@@ -134,47 +138,50 @@ export function TaxFieldRow({ field, isSelected, onSelect }) {
 
         {/* Action row */}
         {isActionable && (
-          <div className="mt-2.5 flex items-center gap-2 flex-wrap">
+          <div className="mt-3 flex items-center gap-2 flex-wrap">
             {hasSuggestion && (
               <Button
                 size="sm"
-                className="h-7 text-xs bg-emerald-700 hover:bg-emerald-800 text-white"
+                className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-1 text-white transition-all"
                 onClick={(e) => openDialog("accept", e)}
                 data-testid={`accept-ai-btn-${field.id}`}
+                aria-label={`Use suggested value for ${field.label}`}
               >
-                <CheckCircle2 className="w-3 h-3 mr-1" /> Accept AI
+                <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" strokeWidth={2.25} /> Use suggested value
               </Button>
             )}
             <Button
               size="sm"
               variant="outline"
-              className="h-7 text-xs"
+              className="h-8 text-xs focus-visible:ring-2 focus-visible:ring-navy focus-visible:ring-offset-1 transition-all"
               onClick={(e) => openDialog("keep", e)}
               data-testid={`keep-current-btn-${field.id}`}
+              aria-label={`Keep the current value for ${field.label}`}
             >
-              <XCircle className="w-3 h-3 mr-1" /> Keep current
+              <XCircle className="w-3.5 h-3.5 mr-1.5" strokeWidth={2.25} /> Keep current value
             </Button>
             <Button
               size="sm"
               variant="outline"
-              className="h-7 text-xs"
+              className="h-8 text-xs focus-visible:ring-2 focus-visible:ring-navy focus-visible:ring-offset-1 transition-all"
               onClick={(e) => openDialog("manual", e)}
               data-testid={`manual-correction-btn-${field.id}`}
+              aria-label={`Enter your own value for ${field.label}`}
             >
-              <PencilLine className="w-3 h-3 mr-1" /> Enter different value
+              <PencilLine className="w-3.5 h-3.5 mr-1.5" strokeWidth={2.25} /> Enter my own value
             </Button>
             {field.evidence?.docId && (
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-7 text-xs text-slate-600 ml-auto"
+                className="h-8 text-xs text-slate-600 hover:text-navy ml-auto transition-colors"
                 data-testid={`view-source-btn-${field.id}`}
                 onClick={(e) => {
                   e.stopPropagation();
                   onSelect?.(field.id, "source");
                 }}
               >
-                <FileText className="w-3 h-3 mr-1" /> View source
+                <FileText className="w-3.5 h-3.5 mr-1" strokeWidth={2.25} /> View source
                 <ChevronRight className="w-3 h-3 ml-0.5" />
               </Button>
             )}
@@ -182,22 +189,22 @@ export function TaxFieldRow({ field, isSelected, onSelect }) {
         )}
 
         {field.status === "locked" && (
-          <div className="mt-2 flex items-center gap-2 text-xs text-slate-500 bg-slate-100/70 rounded px-2 py-1.5 border border-slate-200">
-            <Lock className="w-3 h-3" />
-            <span>Locked — calculated field. Click to see components.</span>
+          <div className="mt-2.5 flex items-center gap-2 text-xs text-slate-500 bg-slate-100/70 rounded px-2 py-1.5 border border-slate-200">
+            <Lock className="w-3 h-3" strokeWidth={2.25} />
+            <span>Calculated field — open to see component values.</span>
           </div>
         )}
 
         {field.status === "read-only" && field.note && (
-          <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
-            <Info className="w-3 h-3" />
+          <div className="mt-2.5 flex items-center gap-2 text-xs text-slate-500">
+            <Info className="w-3 h-3" strokeWidth={2.25} />
             <span>{field.note}</span>
           </div>
         )}
 
         {field.status === "manually-corrected" && (
-          <div className="mt-2 text-[11px] text-indigo-700 font-ibm-mono">
-            Manual override — original AI suggestion preserved in History tab.
+          <div className="mt-2.5 text-[11px] text-indigo-700 font-ibm-mono">
+            Manual override · Original suggestion preserved in History tab
           </div>
         )}
       </div>

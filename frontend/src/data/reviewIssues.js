@@ -87,12 +87,32 @@ export const FIELDS = [
         type: "direct-mapping",
         summary: "Direct mapping from W-2 Box 1. No calculation applied.",
         steps: [
-          "1. Located Box 1 (Wages, tips, other compensation) on Jordan_Lee_W2_MainstageEng.pdf (page 1).",
-          "2. Extracted raw value: 84250.00",
-          "3. Mapped to Form 1040, Line 1a without transformation.",
+          {
+            label: "Locate source",
+            detail: "Found Box 1 (Wages, tips, other compensation) on Jordan_Lee_W2_MainstageEng.pdf, page 1.",
+          },
+          {
+            label: "Extract raw value",
+            detail: "Read the printed value $84,250.00.",
+            value: 84250,
+          },
+          {
+            label: "Normalize",
+            detail: "Stripped currency symbol and trailing decimals. Result unchanged.",
+            value: 84250,
+          },
+          {
+            label: "Map to return field",
+            detail: "Mapped directly to Form 1040, Line 1a (Wages, salaries, and tips). No calculation applied.",
+            value: 84250,
+          },
         ],
       },
     },
+    supportingDocuments: [
+      { docId: "doc-w2-mainstage", role: "primary", note: "Source of the extracted wage value." },
+      { docId: "doc-taxpayer-worksheet", role: "supporting", note: "Client worksheet lists the same employer; supports the extraction." },
+    ],
     lastVerifiedBy: null,
     lastVerifiedAt: null,
   },
@@ -150,12 +170,31 @@ export const FIELDS = [
           { label: "Community Credit Union 1099-INT", value: 520, docId: "doc-1099int-ccu", regionId: "1099int-box1-ccu" },
         ],
         steps: [
-          "1. Located Box 1 on two 1099-INT documents.",
-          "2. Extracted $740 (First Bank, high confidence) and $520 (Community CU, low confidence).",
-          "3. Summed to compute $1,260 taxable interest.",
+          {
+            label: "Identify contributing documents",
+            detail: "Found two 1099-INT documents linked to Jordan Lee for tax year 2025.",
+          },
+          {
+            label: "Extract Box 1 from each",
+            detail: "First Bank: $740 (clean scan). Community Credit Union: $520 (blurred scan, low confidence).",
+          },
+          {
+            label: "Sum values",
+            detail: "$740 + $520 = $1,260.",
+            value: 1260,
+          },
+          {
+            label: "Map to return field",
+            detail: "Mapped total to Form 1040, Line 2b (Taxable interest).",
+            value: 1260,
+          },
         ],
       },
     },
+    supportingDocuments: [
+      { docId: "doc-1099int-firstbank", role: "primary", note: "Provides $740 of the total." },
+      { docId: "doc-1099int-ccu", role: "primary", note: "Provides $520 of the total (low-confidence scan)." },
+    ],
     lastVerifiedBy: null,
     lastVerifiedAt: null,
   },
@@ -210,9 +249,27 @@ export const FIELDS = [
       transformation: {
         type: "direct-mapping",
         summary: "Direct mapping from client-provided worksheet.",
-        steps: ["Extracted from client worksheet, page 2, HSA line."],
+        steps: [
+          {
+            label: "Locate source",
+            detail: "Found the HSA line on Jordan Lee's 2025 taxpayer worksheet, page 2.",
+          },
+          {
+            label: "Extract value",
+            detail: "Read $3,850.00.",
+            value: 3850,
+          },
+          {
+            label: "Map to return field",
+            detail: "Mapped to Schedule 1, Line 13 (HSA deduction).",
+            value: 3850,
+          },
+        ],
       },
     },
+    supportingDocuments: [
+      { docId: "doc-taxpayer-worksheet", role: "primary", note: "Client-provided worksheet listing HSA contribution." },
+    ],
     lastVerifiedBy: "Maya Chen",
     lastVerifiedAt: "2026-01-13T10:14:00Z",
   },
@@ -247,9 +304,27 @@ export const FIELDS = [
       transformation: {
         type: "direct-mapping",
         summary: "Direct mapping from Form 1098, Box 1.",
-        steps: ["Extracted mortgage interest of $8,214.36 from lender-issued 1098."],
+        steps: [
+          {
+            label: "Locate source",
+            detail: "Found Box 1 (Mortgage interest received) on Jordan_Lee_1098_HomeMortgage.pdf, page 1.",
+          },
+          {
+            label: "Extract raw value",
+            detail: "Read $8,214.36.",
+            value: 8214.36,
+          },
+          {
+            label: "Map to return field",
+            detail: "Mapped directly to Schedule A, Line 8a.",
+            value: 8214.36,
+          },
+        ],
       },
     },
+    supportingDocuments: [
+      { docId: "doc-1098-mortgage", role: "primary", note: "Lender-issued Form 1098 — authoritative source." },
+    ],
     lastVerifiedBy: "Maya Chen",
     lastVerifiedAt: "2026-01-13T10:18:00Z",
   },
@@ -299,11 +374,31 @@ export const FIELDS = [
         type: "partial-match",
         summary: "Only $1,200 of the $3,400 claimed is supported by evidence.",
         steps: [
-          "Located a $1,200 donation receipt from Meridian Community Foodbank.",
-          "No source document found for the remaining $2,200.",
+          {
+            label: "Extract supported amount",
+            detail: "Found a $1,200 cash donation receipt from Meridian Community Foodbank (page 1).",
+            value: 1200,
+          },
+          {
+            label: "Compare to return value",
+            detail: "Return claims $3,400 total cash contributions.",
+            value: 3400,
+          },
+          {
+            label: "Compute unsupported delta",
+            detail: "$3,400 − $1,200 = $2,200 has no linked source document.",
+            value: 2200,
+          },
+          {
+            label: "Flag for reviewer",
+            detail: "Do not accept without supporting evidence for the unsupported $2,200.",
+          },
         ],
       },
     },
+    supportingDocuments: [
+      { docId: "doc-charitable-receipt", role: "primary", note: "Supports $1,200 of the claimed $3,400." },
+    ],
     lastVerifiedBy: null,
     lastVerifiedAt: null,
   },
@@ -381,9 +476,27 @@ export const FIELDS = [
       transformation: {
         type: "direct-mapping",
         summary: "Direct mapping from W-2 Box 2.",
-        steps: ["Extracted $11,832.00 from W-2 Box 2."],
+        steps: [
+          {
+            label: "Locate source",
+            detail: "Found Box 2 (Federal income tax withheld) on Jordan_Lee_W2_MainstageEng.pdf, page 1.",
+          },
+          {
+            label: "Extract value",
+            detail: "Read $11,832.00.",
+            value: 11832,
+          },
+          {
+            label: "Map to return field",
+            detail: "Mapped directly to Form 1040, Line 25a.",
+            value: 11832,
+          },
+        ],
       },
     },
+    supportingDocuments: [
+      { docId: "doc-w2-mainstage", role: "primary", note: "W-2 Box 2 is the authoritative source for federal withholding." },
+    ],
     lastVerifiedBy: "Maya Chen",
     lastVerifiedAt: "2026-01-13T10:22:00Z",
   },

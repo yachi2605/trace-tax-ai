@@ -8,6 +8,8 @@ import { ConfidenceIndicator } from "@/components/status/ConfidenceIndicator";
 import { StatusBadge } from "@/components/status/StatusBadge";
 import { LockedExplanation } from "@/components/status/LockedExplanation";
 import { RecommendationProvenance } from "@/components/evidence/RecommendationProvenance";
+import { TraceabilityChain } from "@/components/evidence/TraceabilityChain";
+import { SupportingDocuments } from "@/components/evidence/SupportingDocuments";
 import { formatCurrency, formatDate } from "@/utils/format";
 import {
   FileText,
@@ -42,10 +44,16 @@ export function EvidencePanel({ field, onSelectField }) {
 
   if (!field) {
     return (
-      <aside className="w-[440px] shrink-0 border-l border-slate-200 bg-white flex flex-col items-center justify-center p-8">
-        <Info className="w-8 h-8 text-slate-300 mb-3" strokeWidth={1.5} />
-        <p className="text-sm text-slate-500 text-center max-w-[240px]">
-          Pick a field on the left and I'll show you where the value came from, how confident I am, and what I'd suggest.
+      <aside
+        className="w-[440px] shrink-0 border-l border-slate-200 bg-white flex flex-col items-center justify-center p-8"
+        aria-label="Evidence panel — no field selected"
+      >
+        <Search className="w-8 h-8 text-slate-300 mb-3" strokeWidth={1.5} />
+        <p className="text-sm font-medium text-slate-700 text-center mb-1">
+          Nothing selected yet
+        </p>
+        <p className="text-xs text-slate-500 text-center max-w-[260px] leading-relaxed">
+          Pick a field on the left and I'll show where the value came from, how confident I am, and what I'd suggest next.
         </p>
       </aside>
     );
@@ -222,13 +230,17 @@ export function EvidencePanel({ field, onSelectField }) {
           {/* SOURCE TAB */}
           <TabsContent value="source" className="p-4 space-y-3 mt-0">
             {isAggregation ? (
-              <AggregationBreakdownView field={field} onSelectSource={(docId, regionId) => onSelectField?.(field.id)} />
+              <>
+                <AggregationBreakdownView field={field} onSelectSource={() => onSelectField?.(field.id)} />
+                <TraceabilityChain field={field} />
+                <SupportingDocuments field={field} />
+              </>
             ) : doc ? (
               <>
                 <div className="border border-slate-200 rounded-md p-3 bg-slate-50 space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium">
-                      Source document
+                      Primary source
                     </span>
                     <span className="text-[10px] text-slate-500 font-ibm-mono">
                       Page {field.evidence.page} · {doc.docType}
@@ -236,7 +248,7 @@ export function EvidencePanel({ field, onSelectField }) {
                   </div>
                   <p className="text-sm font-medium text-slate-900">{doc.fileName}</p>
                   <p className="text-xs text-slate-600">
-                    Extracted:{" "}
+                    Extracted value:{" "}
                     <span className="font-ibm-mono tabular-nums font-semibold text-slate-900">
                       {typeof field.evidence.sourceValue === "number"
                         ? formatCurrency(field.evidence.sourceValue)
@@ -248,14 +260,21 @@ export function EvidencePanel({ field, onSelectField }) {
                   document={doc}
                   highlightRegionId={field.evidence.regionId}
                 />
-                <TransformationCard transformation={field.evidence.transformation} />
+                <TraceabilityChain field={field} />
+                <SupportingDocuments field={field} />
               </>
             ) : field.status === "locked" ? (
-              <LockedExplanation field={field} onSelectComponent={(c) => onSelectField?.(c.id)} />
+              <>
+                <LockedExplanation field={field} onSelectComponent={(c) => onSelectField?.(c.id)} />
+                <TraceabilityChain field={field} />
+              </>
             ) : (
-              <div className="border border-dashed border-slate-300 rounded-md p-6 text-center bg-slate-50">
-                <FileText className="w-6 h-6 text-slate-300 mx-auto mb-2" />
-                <p className="text-xs text-slate-500">No source document linked to this field.</p>
+              <div className="border border-dashed border-slate-300 rounded-md p-8 text-center bg-slate-50">
+                <FileText className="w-6 h-6 text-slate-300 mx-auto mb-2" strokeWidth={1.5} />
+                <p className="text-sm font-medium text-slate-700 mb-1">No source linked</p>
+                <p className="text-xs text-slate-500 max-w-[240px] mx-auto leading-relaxed">
+                  This value came directly from the return, without a supporting document.
+                </p>
               </div>
             )}
           </TabsContent>
@@ -343,7 +362,7 @@ function PinnedAiRecommendationCard({ field }) {
       <div className="px-3 py-2 border-b border-sky-200 bg-sky-100/60 flex items-center gap-2">
         <Sparkles className="w-3.5 h-3.5 text-sky-800" strokeWidth={2.25} />
         <p className="text-[10px] uppercase tracking-wider text-sky-900 font-semibold">
-          Original AI recommendation · preserved
+          Original suggestion · preserved
         </p>
       </div>
       <div className="px-3 py-2 space-y-1">
@@ -478,7 +497,7 @@ function ValueComparison({ field }) {
       {showAi && (
         <div className="flex items-center justify-between px-3 py-2 bg-sky-50/40">
           <span className="text-[10px] uppercase tracking-wider text-sky-800 font-medium">
-            AI suggested
+            Suggested value
           </span>
           <span className="font-ibm-mono tabular-nums text-sm font-semibold text-sky-900">
             {typeof field.aiSuggestedValue === "number"
@@ -653,19 +672,19 @@ const REASON_CATEGORY_LABELS = {
 
 const DECISION_META = {
   "accept-ai": {
-    label: "Accepted AI suggestion",
+    label: "Used suggested value",
     icon: CheckCircle2,
     tint: "emerald",
     verb: "accepted",
   },
   "keep-current": {
-    label: "Rejected AI · Kept current value",
+    label: "Kept current value",
     icon: FileWarning,
     tint: "slate",
-    verb: "rejected",
+    verb: "kept",
   },
   "manual-correction": {
-    label: "Manual correction",
+    label: "Entered own value",
     icon: MessageSquareText,
     tint: "indigo",
     verb: "changed",
@@ -733,7 +752,7 @@ function AiExtractionEvent({ data }) {
         <div className="flex items-center gap-2">
           <Sparkles className="w-3.5 h-3.5 text-sky-800" strokeWidth={2.25} />
           <span className="text-[10px] uppercase tracking-wider text-sky-900 font-semibold">
-            AI extracted value
+            Suggestion generated
           </span>
         </div>
         <span className="text-[10px] text-sky-800 font-ibm-mono tabular-nums">
@@ -744,7 +763,7 @@ function AiExtractionEvent({ data }) {
         <p className="text-xs text-slate-700 leading-relaxed">{data.summary}</p>
         {(data.suggestedValue !== null && data.suggestedValue !== undefined) && (
           <p className="text-[11px] text-slate-600">
-            Recommendation:{" "}
+            Suggested value:{" "}
             <span className="font-ibm-mono tabular-nums font-semibold text-slate-900">
               {typeof data.suggestedValue === "number"
                 ? formatCurrency(data.suggestedValue)
@@ -807,9 +826,9 @@ function HumanDecisionEvent({ data, field }) {
       </div>
 
       <div className="px-3 py-2.5 space-y-2.5 bg-white">
-        {/* Section 1 — AI recommendation snapshot */}
+        {/* Section 1 — Suggestion snapshot */}
         {aiRec && (
-          <AuditSection label="AI recommendation" icon={Sparkles}>
+          <AuditSection label="Suggestion snapshot" icon={Sparkles}>
             <div className="flex items-baseline gap-2 flex-wrap">
               <span className="font-ibm-mono tabular-nums text-xs font-semibold text-sky-900">
                 {aiRec.suggestedValue !== null && aiRec.suggestedValue !== undefined
@@ -838,7 +857,15 @@ function HumanDecisionEvent({ data, field }) {
         <AuditSection label="Human decision" icon={Icon}>
           <p className="text-xs text-slate-800">
             <span className="font-medium">{data.actor}</span>{" "}
-            <span className="text-slate-600">{meta.verb} the AI suggestion.</span>
+            <span className="text-slate-600">
+              {data.action === "accept-ai"
+                ? "used the suggested value."
+                : data.action === "keep-current"
+                  ? "kept the current value and marked it verified."
+                  : data.action === "manual-correction"
+                    ? "entered their own value."
+                    : "resolved the conflict."}
+            </span>
           </p>
           {showValueChange && (
             <p

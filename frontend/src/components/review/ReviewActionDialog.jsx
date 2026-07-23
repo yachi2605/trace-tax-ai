@@ -48,8 +48,8 @@ export function ReviewActionDialog({ open, onOpenChange, field, mode }) {
 
   const handleAccept = () => {
     acceptAi(field.id);
-    toast.success("AI suggestion accepted", {
-      description: `${field.label} updated to ${formatCurrency(field.aiSuggestedValue)}`,
+    toast.success("Suggested value applied", {
+      description: `${field.label} is now Verified.`,
     });
     onOpenChange(false);
   };
@@ -75,7 +75,7 @@ export function ReviewActionDialog({ open, onOpenChange, field, mode }) {
       typeof field.currentValue === "number" ? Number(newValue.replace(/[$,\s]/g, "")) : newValue;
     manualCorrection(field.id, parsed, reason, reasonCategory);
     toast.success("Manual correction saved", {
-      description: `${field.label} updated. Original AI suggestion preserved in History.`,
+      description: `${field.label} updated. Original suggestion is preserved in History.`,
     });
     onOpenChange(false);
   };
@@ -90,10 +90,10 @@ export function ReviewActionDialog({ open, onOpenChange, field, mode }) {
 
   const title =
     mode === "accept"
-      ? "Accept AI suggestion"
+      ? "Use the suggested value?"
       : mode === "keep"
-        ? "Keep current value"
-        : "Enter a different value";
+        ? "Keep the current value?"
+        : "Enter your own value";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -108,14 +108,14 @@ export function ReviewActionDialog({ open, onOpenChange, field, mode }) {
         {/* Context comparison block — always visible */}
         <div className="border border-slate-200 rounded-md bg-slate-50 divide-y divide-slate-200 text-sm">
           <div className="flex items-center justify-between px-3 py-2">
-            <span className="text-xs text-slate-500 uppercase tracking-wider">Current value</span>
+            <span className="text-xs text-slate-500 uppercase tracking-wider">Return value</span>
             <span className="font-ibm-mono tabular-nums font-semibold text-slate-900">
               {typeof field.currentValue === "number" ? formatCurrency(field.currentValue) : field.currentValue}
             </span>
           </div>
           {field.aiSuggestedValue !== null && field.aiSuggestedValue !== undefined && (
             <div className="flex items-center justify-between px-3 py-2">
-              <span className="text-xs text-sky-700 uppercase tracking-wider">AI suggested</span>
+              <span className="text-xs text-sky-700 uppercase tracking-wider">Suggested value</span>
               <span className="font-ibm-mono tabular-nums font-semibold text-sky-800">
                 {typeof field.aiSuggestedValue === "number"
                   ? formatCurrency(field.aiSuggestedValue)
@@ -127,9 +127,9 @@ export function ReviewActionDialog({ open, onOpenChange, field, mode }) {
 
         {mode === "accept" && (
           <p className="text-sm text-slate-600 leading-relaxed">
-            The field value will be updated to the AI suggested value and marked as{" "}
-            <span className="font-medium text-emerald-700">Verified</span>. The original AI recommendation and evidence
-            remain available in the field's history.
+            The field will update to the suggested value and be marked{" "}
+            <span className="font-medium text-emerald-700">Verified</span>. The original suggestion and its
+            evidence stay on record in the History tab.
           </p>
         )}
 
@@ -215,7 +215,7 @@ export function ReviewActionDialog({ open, onOpenChange, field, mode }) {
               onClick={handleAccept}
               data-testid="review-dialog-confirm-accept"
             >
-              Accept & verify
+              Use suggested value
             </Button>
           )}
           {mode === "keep" && (
@@ -224,7 +224,7 @@ export function ReviewActionDialog({ open, onOpenChange, field, mode }) {
               onClick={handleKeep}
               data-testid="review-dialog-confirm-keep"
             >
-              Keep current & verify
+              Keep current & mark verified
             </Button>
           )}
           {mode === "manual" && (
@@ -233,7 +233,7 @@ export function ReviewActionDialog({ open, onOpenChange, field, mode }) {
               onClick={handleManual}
               data-testid="review-dialog-confirm-manual"
             >
-              Save correction
+              Save my value
             </Button>
           )}
         </DialogFooter>
