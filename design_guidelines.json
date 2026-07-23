@@ -1,0 +1,138 @@
+{
+  "app_name": "TraceTax AI",
+  "theme_mode": "light",
+  "description": "A CPA-facing tax return review workspace prototype. It is calm, trustworthy, inspectable, and professional. Deep data density with clear auditability.",
+  "typography": {
+    "fonts": [
+      {
+        "name": "Chivo",
+        "usage": "Headings, primary UI navigation, and titles. Provides a clean, technical, and authoritative feel.",
+        "import": "@import url('https://fonts.googleapis.com/css2?family=Chivo:wght@400;500;600;700&display=swap');"
+      },
+      {
+        "name": "IBM Plex Sans",
+        "usage": "Primary body text, standard form fields, paragraphs. Maximizes legibility for dense UI.",
+        "import": "@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap');"
+      },
+      {
+        "name": "IBM Plex Mono",
+        "usage": "Data fields, dollar amounts, confidence scores, dates, and audit log timestamps. Crucial for CPAs to align and read numbers quickly.",
+        "import": "@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap');"
+      }
+    ],
+    "scale": {
+      "h1": "text-2xl font-bold tracking-tight font-chivo text-slate-900",
+      "h2": "text-xl font-semibold tracking-tight font-chivo text-slate-900",
+      "h3": "text-lg font-medium font-chivo text-slate-800",
+      "body": "text-sm font-ibm-plex text-slate-600",
+      "data": "text-sm font-ibm-mono text-slate-900",
+      "caption": "text-xs font-ibm-plex text-slate-500 uppercase tracking-wider"
+    }
+  },
+  "colors": {
+    "background": {
+      "app": "#F8FAFC",
+      "panel": "#FFFFFF",
+      "document_viewer": "#F1F5F9"
+    },
+    "primary": {
+      "navy": "#0A2540",
+      "navy_hover": "#113B66"
+    },
+    "semantic": {
+      "amber_warning": "#D97706",
+      "amber_bg": "#FEF3C7",
+      "red_error": "#DC2626",
+      "red_bg": "#FEE2E2",
+      "green_verified": "#059669",
+      "green_bg": "#D1FAE5",
+      "blue_ai": "#0284C7",
+      "blue_ai_bg": "#E0F2FE"
+    },
+    "border": "#E2E8F0",
+    "text": {
+      "primary": "#0F172A",
+      "secondary": "#475569",
+      "muted": "#94A3B8"
+    }
+  },
+  "layouts": {
+    "app_container": "h-screen w-full flex flex-col bg-slate-50 overflow-hidden",
+    "header": "h-14 w-full bg-white border-b border-slate-200 flex items-center justify-between px-4 z-50 shrink-0",
+    "main_workspace": "flex-1 flex overflow-hidden",
+    "panels": {
+      "left_nav": "w-64 bg-white border-r border-slate-200 overflow-y-auto flex-shrink-0",
+      "center_fields": "flex-1 bg-slate-50 overflow-y-auto min-w-[500px] p-6",
+      "right_evidence": "w-[450px] bg-white border-l border-slate-200 overflow-y-auto flex-shrink-0 flex flex-col"
+    }
+  },
+  "components": {
+    "TaxFieldRow": {
+      "description": "A dense row displaying tax fields. Hover state is crucial for scannability.",
+      "classes": "flex items-center justify-between p-3 border border-slate-200 bg-white rounded-md mb-2 hover:border-slate-300 hover:shadow-sm transition-all group",
+      "elements": "Label (IBM Plex), Value Input/Display (IBM Plex Mono), Status Badge, Action Menu (lucide-react icons)"
+    },
+    "StatusBadges": {
+      "AI_Generated": "bg-sky-50 text-sky-700 border border-sky-200 px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1",
+      "Verified": "bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1",
+      "Needs_Review": "bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1",
+      "Locked": "bg-slate-100 text-slate-500 border border-slate-200 px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1"
+    },
+    "DocumentPreview": {
+      "description": "Simulated document viewer showing where the AI extracted data from.",
+      "container": "relative w-full border border-slate-200 rounded-md bg-slate-100 overflow-hidden",
+      "highlight_box": "absolute border-2 border-amber-500 bg-amber-400/20 rounded-[2px] cursor-pointer transition-colors hover:bg-amber-400/30"
+    },
+    "ConfidenceScore": {
+      "high": "text-emerald-700 font-ibm-mono text-xs font-semibold",
+      "medium": "text-amber-600 font-ibm-mono text-xs font-semibold",
+      "low": "text-red-600 font-ibm-mono text-xs font-semibold"
+    },
+    "Tabs": {
+      "classes": "flex space-x-1 border-b border-slate-200 px-2",
+      "active": "px-3 py-2 text-sm font-medium border-b-2 border-slate-900 text-slate-900",
+      "inactive": "px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-700"
+    }
+  },
+  "motion": {
+    "transitions": "Use subtle, quick transitions (150ms). Focus on opacity and border-colors. NO bouncy or dramatic animations. This is a CPA tool.",
+    "hover_states": "Interactive elements should slightly darken or gain a 1px border. Do not use heavy drop shadows."
+  },
+  "accessibility": {
+    "contrast": "Strict adherence to WCAG AA. Ensure text on badges has at least 4.5:1 contrast ratio.",
+    "testing": "All interactive elements, inputs, and badges MUST include data-testid attributes."
+  },
+  "image_urls": {
+    "reviewer_avatar": {
+      "url": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2",
+      "description": "Maya Chen, CPA (Reviewer Profile Photo)"
+    },
+    "client_avatar": {
+      "url": "https://images.pexels.com/photos/8937548/pexels-photo-8937548.jpeg",
+      "description": "Jordan Lee (Client Profile Photo)"
+    },
+    "tax_document_w2": {
+      "url": "https://images.pexels.com/photos/7821551/pexels-photo-7821551.jpeg",
+      "description": "Simulated 1040/W-2 document for evidence extraction preview"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Build the application exclusively using React (.js/.jsx), Tailwind CSS, and lucide-react icons. Do NOT use TypeScript (.tsx).",
+    "Implement a 3-panel workspace architecture with a non-scrolling full-height container ('h-screen overflow-hidden') and independently scrolling panels.",
+    "Utilize IBM Plex Mono heavily for all numerical values, confidence scores, and IDs.",
+    "Never use fully transparent backgrounds for overlays, dialogs, dropdowns, or headers. Use solid backgrounds ('bg-white') with a border and subtle shadow.",
+    "Avoid glowing effects, gradients, and typical AI 'sparkle' icons. Use a clinical, technical aesthetic. 'AI-generated' is indicated by a subtle sky-blue pill badge and a 'BrainCircuit' or 'Cpu' icon from lucide-react.",
+    "Implement the Document Preview by placing the 'tax_document_w2' image in a relative container and absolutely positioning a div over it to simulate an AI extraction zone highlight ('bg-amber-400/20 border-2 border-amber-500').",
+    "All correction workflows (modals/popovers) must have a required text area for 'Reason for change' to maintain the audit trail.",
+    "Do NOT center align form fields or data rows. Everything should be strongly left-aligned or tabular."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "Prioritize using pre-existing components from src/components/ui when applicable, but customize padding and fonts to be denser.",
+    "You MUST NOT apply universal transitions (e.g., 'transition: all'). Always add transitions for specific properties.",
+    "You MUST NOT center align the app container. Do not add '.App { text-align: center; }' in the CSS.",
+    "Use 1px borders and distinct solid colors for hierarchy, rather than deep shadows.",
+    "All interactive and key informational elements MUST include a 'data-testid' attribute to facilitate robust automated testing (e.g., 'data-testid=\"accept-ai-button\"').",
+    "NEVER use AI assistant Emoji characters (e.g. brain or robot). Rely strictly on 'lucide-react'.",
+    "Use 'sonner' for toast notifications located in '/app/frontend/src/components/ui/sonner.js'."
+  ]
+}
