@@ -70,6 +70,16 @@ infrastructure, real OCR, or a real AI model.
 - ✅ README with challenges addressed, functional vs. simulated, design decisions, tech stack, run/deploy instructions
 - ✅ Frontend testing: 25/25 acceptance criteria passed (iteration_1.json)
 
+## What's been enhanced (2026-01-14 · Trust & Explainability pass)
+
+- ✅ Every field now has structured `confidence.factors` with +/-/neutral impact chips explaining *what contributed* to the confidence rating
+- ✅ New `RecommendationProvenance` card — the "How this recommendation was generated" section — shown on Summary and Reasoning tabs. Structured rows for Source document, Page, Field/Box, Transformation, Extracted value. Special modes for aggregation, conflict, and locked/calculated fields.
+- ✅ New `AssistantNoteCard` — human-toned conversational note at the top of every issue's Summary tab. ("I noticed the wages on this return are $270 higher than what I read from the W-2. Could you take a look…")
+- ✅ New `WhyFlaggedCard` — explains *why* the AI flagged the row (what it compared, what threshold triggered the flag) in plain English.
+- ✅ New `UncertaintyCard` — an explicit "What I'm not sure about" bullet list for each field. Never present in previous version; addresses Challenge 10's "show uncertainty" requirement.
+- ✅ Reasoning tab reworded: "What did the AI do?" → "What I checked". "Recommended action" → "What I'd suggest". Removed all references to "the AI"; tone is now first-person assistant.
+- ✅ 19/19 regression + new-feature tests passed (iteration_2.json). No layout redesign — all previous data-testids preserved.
+
 ## Prioritized backlog (P0/P1/P2)
 
 **P1** (would enhance case study submission):
