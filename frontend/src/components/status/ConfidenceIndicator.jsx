@@ -1,16 +1,17 @@
 import React from "react";
 import { cn } from "@/lib/utils";
-import { ShieldCheck, ShieldAlert, ShieldQuestion } from "lucide-react";
+import { ShieldCheck, ShieldAlert, ShieldQuestion, Plus, Minus, Circle } from "lucide-react";
 
 /**
- * ConfidenceIndicator — plain-language confidence
+ * ConfidenceIndicator — plain-language confidence with factor breakdown.
  *
- * Shows both a categorical label (High/Medium/Low) and a percentage, plus a
- * human-readable reason. Directly supports Challenge 10 (Trustworthy AI).
+ * Shows a categorical label (High/Medium/Low), a percentage, a human reason,
+ * and — when available — a structured list of factors that contributed
+ * positively or negatively. Directly supports Challenge 10 (Trustworthy AI).
  */
-export function ConfidenceIndicator({ confidence, compact = false, className, testId }) {
+export function ConfidenceIndicator({ confidence, compact = false, className, testId, showFactors = true }) {
   if (!confidence) return null;
-  const { level, pct, reason } = confidence;
+  const { level, pct, reason, factors } = confidence;
 
   const styles = {
     high: {
@@ -18,18 +19,21 @@ export function ConfidenceIndicator({ confidence, compact = false, className, te
       icon: ShieldCheck,
       classes: "bg-emerald-50 text-emerald-800 border-emerald-200",
       bar: "bg-emerald-500",
+      chipBg: "bg-emerald-100",
     },
     medium: {
       label: "Medium confidence",
       icon: ShieldQuestion,
       classes: "bg-amber-50 text-amber-800 border-amber-200",
       bar: "bg-amber-500",
+      chipBg: "bg-amber-100",
     },
     low: {
       label: "Low confidence",
       icon: ShieldAlert,
       classes: "bg-red-50 text-red-800 border-red-200",
       bar: "bg-red-500",
+      chipBg: "bg-red-100",
     },
   };
   const s = styles[level] || styles.medium;
@@ -73,6 +77,56 @@ export function ConfidenceIndicator({ confidence, compact = false, className, te
         />
       </div>
       <p className="text-xs leading-relaxed opacity-90">{reason}</p>
+
+      {showFactors && factors && factors.length > 0 && (
+        <div className="mt-3 pt-2.5 border-t border-current/10">
+          <p className="text-[10px] uppercase tracking-wider font-medium opacity-70 mb-1.5">
+            What contributed to this confidence
+          </p>
+          <ul className="space-y-1" data-testid="confidence-factors">
+            {factors.map((f, i) => (
+              <ConfidenceFactor key={i} factor={f} chipBg={s.chipBg} />
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
+
+function ConfidenceFactor({ factor, chipBg }) {
+  const map = {
+    positive: {
+      icon: Plus,
+      classes: "text-emerald-700 bg-emerald-100 border-emerald-200",
+      strokeWidth: 3,
+    },
+    negative: {
+      icon: Minus,
+      classes: "text-red-700 bg-red-100 border-red-200",
+      strokeWidth: 3,
+    },
+    neutral: {
+      icon: Circle,
+      classes: "text-slate-600 bg-slate-100 border-slate-200",
+      strokeWidth: 2,
+    },
+  };
+  const m = map[factor.impact] || map.neutral;
+  const Icon = m.icon;
+  return (
+    <li className="flex items-start gap-2 text-xs">
+      <span
+        className={cn(
+          "shrink-0 mt-0.5 w-3.5 h-3.5 rounded-full border flex items-center justify-center",
+          m.classes
+        )}
+        aria-hidden="true"
+      >
+        <Icon className="w-2 h-2" strokeWidth={m.strokeWidth} />
+      </span>
+      <span className="leading-relaxed opacity-90">{factor.label}</span>
+    </li>
+  );
+}
+

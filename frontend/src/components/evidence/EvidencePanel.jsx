@@ -7,6 +7,7 @@ import { DocumentPreview } from "@/components/evidence/DocumentPreview";
 import { ConfidenceIndicator } from "@/components/status/ConfidenceIndicator";
 import { StatusBadge } from "@/components/status/StatusBadge";
 import { LockedExplanation } from "@/components/status/LockedExplanation";
+import { RecommendationProvenance } from "@/components/evidence/RecommendationProvenance";
 import { formatCurrency, formatDate } from "@/utils/format";
 import {
   FileText,
@@ -19,6 +20,9 @@ import {
   FileWarning,
   CheckCircle2,
   Sparkles,
+  MessageSquareText,
+  HelpCircle,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAppState } from "@/store/appStore";
@@ -41,7 +45,7 @@ export function EvidencePanel({ field, onSelectField }) {
       <aside className="w-[440px] shrink-0 border-l border-slate-200 bg-white flex flex-col items-center justify-center p-8">
         <Info className="w-8 h-8 text-slate-300 mb-3" strokeWidth={1.5} />
         <p className="text-sm text-slate-500 text-center max-w-[240px]">
-          Select a field on the left to see its evidence, AI reasoning, and audit history.
+          Pick a field on the left and I'll show you where the value came from, how confident I am, and what I'd suggest.
         </p>
       </aside>
     );
@@ -84,9 +88,14 @@ export function EvidencePanel({ field, onSelectField }) {
           {/* SUMMARY TAB */}
           <TabsContent value="summary" className="p-4 space-y-3 mt-0">
             {field.status === "locked" ? (
-              <LockedExplanation field={field} onSelectComponent={(c) => onSelectField?.(c.id)} />
+              <>
+                <LockedExplanation field={field} onSelectComponent={(c) => onSelectField?.(c.id)} />
+                <RecommendationProvenance field={field} />
+              </>
             ) : field.issue ? (
               <>
+                {field.assistantNote && <AssistantNoteCard note={field.assistantNote} />}
+
                 <div className="border border-slate-200 rounded-md p-3 bg-white">
                   <p className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1">
                     Issue
@@ -97,17 +106,26 @@ export function EvidencePanel({ field, onSelectField }) {
 
                 <ValueComparison field={field} />
 
+                <WhyFlaggedCard whyFlagged={field.issue.whyFlagged} />
+
                 {field.confidence && <ConfidenceIndicator confidence={field.confidence} />}
+
+                <UncertaintyCard items={field.issue.uncertainty} confidenceLevel={field.confidence?.level} />
+
+                <RecommendationProvenance field={field} />
 
                 <div className="border border-navy/15 rounded-md p-3 bg-navy/[0.03]">
                   <div className="flex items-start gap-2">
                     <Lightbulb className="w-4 h-4 text-navy shrink-0 mt-0.5" strokeWidth={2.25} />
                     <div>
                       <p className="text-[10px] uppercase tracking-wider text-navy font-medium mb-1">
-                        Recommended action
+                        What I'd suggest
                       </p>
                       <p className="text-sm text-slate-700 leading-relaxed">
                         {field.issue.recommendedAction}
+                      </p>
+                      <p className="text-[11px] text-slate-500 mt-1.5 italic">
+                        You're the reviewer — I'll do whatever you decide.
                       </p>
                     </div>
                   </div>
@@ -132,8 +150,8 @@ export function EvidencePanel({ field, onSelectField }) {
                       <div className="flex-1">
                         <p className="text-sm text-rose-900 font-medium mb-1">Missing evidence</p>
                         <p className="text-xs text-rose-800/90 leading-relaxed">
-                          Do not accept this value without a linked source. Request the missing
-                          document from the client, or attach an existing one.
+                          I wouldn't accept this value without a linked source. I can draft a
+                          document request for the client if that helps.
                         </p>
                         <div className="flex gap-2 mt-2">
                           <Button
@@ -173,6 +191,7 @@ export function EvidencePanel({ field, onSelectField }) {
                 </div>
                 <ValueComparison field={field} />
                 {field.confidence && <ConfidenceIndicator confidence={field.confidence} />}
+                <RecommendationProvenance field={field} />
               </div>
             ) : (
               <div className="space-y-3">
@@ -180,6 +199,7 @@ export function EvidencePanel({ field, onSelectField }) {
                   {field.note || "This field is informational and requires no action."}
                 </div>
                 <ValueComparison field={field} />
+                <RecommendationProvenance field={field} />
               </div>
             )}
           </TabsContent>
@@ -229,55 +249,31 @@ export function EvidencePanel({ field, onSelectField }) {
           <TabsContent value="reasoning" className="p-4 space-y-3 mt-0">
             <div className="border border-sky-200 rounded-md p-3 bg-sky-50">
               <div className="flex items-start gap-2">
-                <Sparkles className="w-4 h-4 text-sky-700 shrink-0 mt-0.5" strokeWidth={2.25} />
+                <Search className="w-4 h-4 text-sky-700 shrink-0 mt-0.5" strokeWidth={2.25} />
                 <div>
                   <p className="text-[10px] uppercase tracking-wider text-sky-800 font-medium mb-1">
-                    What the AI did
+                    What I checked
                   </p>
                   <p className="text-sm text-slate-700 leading-relaxed">
                     {field.evidence?.transformation?.summary ||
-                      "The AI did not process this field."}
+                      "I didn't process this field — no source-backed recommendation here."}
                   </p>
                 </div>
               </div>
             </div>
 
+            {field.issue?.whyFlagged && <WhyFlaggedCard whyFlagged={field.issue.whyFlagged} compact />}
+
             {field.confidence && <ConfidenceIndicator confidence={field.confidence} />}
 
-            {field.evidence?.transformation?.steps && (
-              <div className="border border-slate-200 rounded-md">
-                <div className="px-3 py-2 border-b border-slate-200 bg-slate-50">
-                  <p className="text-[10px] uppercase tracking-wider text-slate-500 font-medium">
-                    Processing steps
-                  </p>
-                </div>
-                <ol className="px-3 py-2 space-y-1.5">
-                  {field.evidence.transformation.steps.map((s, i) => (
-                    <li key={i} className="text-xs text-slate-700 leading-relaxed flex gap-2">
-                      <span className="font-ibm-mono text-slate-400 w-4 shrink-0">{i + 1}.</span>
-                      <span>{s.replace(/^\d+\.\s*/, "")}</span>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            )}
+            <RecommendationProvenance field={field} />
 
-            {field.issue && (
-              <div className="border border-amber-200 rounded-md p-3 bg-amber-50">
-                <p className="text-[10px] uppercase tracking-wider text-amber-800 font-medium mb-1">
-                  What remains uncertain
-                </p>
-                <p className="text-xs text-amber-900 leading-relaxed">
-                  {field.confidence?.level === "low"
-                    ? "The AI is not confident in this extraction. Review the source document before accepting."
-                    : field.status === "conflicting-evidence"
-                      ? "Two source documents disagree. The AI intentionally did not choose one — a reviewer must decide."
-                      : field.status === "missing-source"
-                        ? "Part or all of the claimed value has no linked source document."
-                        : "Human confirmation is recommended before this field is finalized."}
-                </p>
-              </div>
-            )}
+            <UncertaintyCard
+              items={field.issue?.uncertainty}
+              confidenceLevel={field.confidence?.level}
+              status={field.status}
+              fallback
+            />
           </TabsContent>
 
           {/* HISTORY TAB */}
@@ -303,6 +299,92 @@ function EvidenceTab({ value, label, testId }) {
     >
       {label}
     </TabsTrigger>
+  );
+}
+
+/* -------- Trust / explainability primitives (Challenge 10) -------- */
+
+function AssistantNoteCard({ note }) {
+  return (
+    <div
+      className="border border-slate-200 rounded-md bg-white p-3 flex items-start gap-2.5"
+      data-testid="assistant-note"
+    >
+      <div className="w-6 h-6 rounded-full bg-navy text-white flex items-center justify-center shrink-0 mt-0.5">
+        <MessageSquareText className="w-3 h-3" strokeWidth={2.25} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-0.5">
+          Note from your review assistant
+        </p>
+        <p className="text-sm text-slate-800 leading-relaxed">{note}</p>
+      </div>
+    </div>
+  );
+}
+
+function WhyFlaggedCard({ whyFlagged, compact = false }) {
+  if (!whyFlagged) return null;
+  return (
+    <div
+      className="border border-slate-200 rounded-md bg-white overflow-hidden"
+      data-testid="why-flagged"
+    >
+      <div className="px-3 py-2 border-b border-slate-200 bg-slate-50 flex items-center gap-2">
+        <HelpCircle className="w-3.5 h-3.5 text-slate-600" strokeWidth={2.25} />
+        <p className="text-[10px] uppercase tracking-wider text-slate-600 font-medium">
+          {compact ? "Why I flagged this" : "Why I flagged this for you"}
+        </p>
+      </div>
+      <p className="px-3 py-2.5 text-xs text-slate-700 leading-relaxed">{whyFlagged}</p>
+    </div>
+  );
+}
+
+function UncertaintyCard({ items, confidenceLevel, status, fallback = false }) {
+  const hasItems = Array.isArray(items) && items.length > 0;
+
+  // If no explicit uncertainty list, only show fallback (Reasoning tab) when it's meaningful
+  if (!hasItems && !fallback) return null;
+  if (!hasItems && fallback && confidenceLevel === "high" && !status) return null;
+
+  const fallbackText =
+    confidenceLevel === "low"
+      ? "I'm not confident in this extraction — please look at the source before accepting."
+      : status === "conflicting-evidence"
+        ? "Two source documents disagree. I deliberately didn't pick one for you."
+        : status === "missing-source"
+          ? "Part or all of the claimed value has no linked source document."
+          : confidenceLevel === "medium"
+            ? "I have a general answer, but some inputs weren't fully unambiguous."
+            : null;
+
+  if (!hasItems && !fallbackText) return null;
+
+  return (
+    <div
+      className="border border-amber-200 rounded-md bg-amber-50 overflow-hidden"
+      data-testid="uncertainty-card"
+    >
+      <div className="px-3 py-2 border-b border-amber-200 bg-amber-100/60 flex items-center gap-2">
+        <HelpCircle className="w-3.5 h-3.5 text-amber-800" strokeWidth={2.25} />
+        <p className="text-[10px] uppercase tracking-wider text-amber-800 font-medium">
+          What I'm not sure about
+        </p>
+      </div>
+      {hasItems ? (
+        <ul className="px-3 py-2 space-y-1.5">
+          {items.map((it, i) => (
+            <li key={i} className="text-xs text-amber-900 leading-relaxed flex gap-2">
+              <span className="text-amber-700 mt-0.5 shrink-0">•</span>
+              <span>{it}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="px-3 py-2 text-xs text-amber-900 leading-relaxed">{fallbackText}</p>
+      )}
+    </div>
   );
 }
 

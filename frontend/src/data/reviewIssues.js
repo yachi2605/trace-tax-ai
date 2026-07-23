@@ -55,15 +55,29 @@ export const FIELDS = [
       level: "high",
       pct: 96,
       reason:
-        "The source text was clear, the document type was recognized as a W-2, and the extracted value matched the expected Box 1 format.",
+        "I'm confident the extracted value is correct, but I can't tell you whether the return's higher figure was intentional. A quick check with the client should resolve it.",
+      factors: [
+        { label: "Document type recognized as W-2 (Copy B)", impact: "positive" },
+        { label: "Box 1 numeric value clearly legible", impact: "positive" },
+        { label: "Employer name matches client worksheet", impact: "positive" },
+        { label: "No corrected W-2c present at time of extraction", impact: "neutral" },
+      ],
     },
     issue: {
-      title: "Wage amount differs from W-2 Box 1",
+      title: "The return's wages figure is $270 higher than the W-2",
       summary:
         "The return currently shows $84,520, while Box 1 of the uploaded W-2 shows $84,250. The values differ by $270.",
+      whyFlagged:
+        "I compare Line 1a on the return against Box 1 of each uploaded W-2. When they disagree by more than a rounding amount, I flag it because wages usually match the W-2 unless a corrected W-2c has been issued or an adjustment was made elsewhere.",
+      uncertainty: [
+        "I don't know whether the $270 difference was intentional (for example, a prior-year adjustment).",
+        "I can't rule out a corrected W-2c that hasn't been uploaded yet.",
+      ],
       recommendedAction:
         "Use the W-2 source value unless a corrected W-2 or another supporting document exists.",
     },
+    assistantNote:
+      "I noticed the wages on this return are $270 higher than what I read from the W-2. Could you take a look and let me know which figure is correct?",
     evidence: {
       docId: "doc-w2-mainstage",
       page: 1,
@@ -99,15 +113,29 @@ export const FIELDS = [
       level: "low",
       pct: 62,
       reason:
-        "The source image for Community Credit Union 1099-INT is blurred and two digits may have been interpreted incorrectly. Review the highlighted area before accepting this value.",
+        "I could read one of the two 1099-INT documents cleanly, but the Community Credit Union scan is blurred. Two digits in Box 1 could plausibly be read as different numbers. Please verify before accepting.",
+      factors: [
+        { label: "First Bank 1099-INT extracted cleanly ($740)", impact: "positive" },
+        { label: "Community CU 1099-INT scan is blurred", impact: "negative" },
+        { label: "Two digits on Community CU could be ambiguous", impact: "negative" },
+        { label: "No mismatch with prior-year reported interest yet", impact: "neutral" },
+      ],
     },
     issue: {
-      title: "Low-confidence extraction on Community CU 1099-INT",
+      title: "One of the 1099-INT scans is hard to read",
       summary:
-        "The AI aggregated two 1099-INT documents to compute $1,260, but the Community Credit Union scan is blurred. The return currently shows $1,280.",
+        "I aggregated two 1099-INT documents to compute $1,260, but the Community Credit Union scan is blurred. The return currently shows $1,280.",
+      whyFlagged:
+        "When I aggregate multiple source documents for a single line, I flag the total whenever any component has low extraction confidence. Here, the First Bank amount is solid, but I'm less sure about the Community CU amount, so I want you to look at the source before we finalize.",
+      uncertainty: [
+        "The blurred digits on the Community CU 1099-INT could be $520, $530, or possibly $580.",
+        "I don't know whether the client has a corrected or clearer copy available.",
+      ],
       recommendedAction:
         "Open the Community Credit Union 1099-INT preview and verify Box 1 before accepting.",
     },
+    assistantNote:
+      "The Community Credit Union 1099-INT is a little blurry — could you eyeball Box 1 and confirm the amount? I'd rather ask than guess.",
     evidence: {
       // aggregation from multiple documents
       docId: null,
@@ -167,7 +195,11 @@ export const FIELDS = [
     confidence: {
       level: "high",
       pct: 99,
-      reason: "Value matches client worksheet and prior-year contribution pattern.",
+      reason: "The amount matches the client's worksheet exactly and is consistent with the contribution pattern I saw in the prior-year return.",
+      factors: [
+        { label: "Exact match to client worksheet, page 2", impact: "positive" },
+        { label: "Consistent with 2024 return HSA contribution", impact: "positive" },
+      ],
     },
     issue: null,
     evidence: {
@@ -200,7 +232,11 @@ export const FIELDS = [
     confidence: {
       level: "high",
       pct: 98,
-      reason: "Direct match to Form 1098 Box 1 from Meridian Home Lending.",
+      reason: "The amount matches Box 1 of the Form 1098 from Meridian Home Lending exactly, so there's nothing ambiguous here.",
+      factors: [
+        { label: "Direct match to Form 1098 Box 1", impact: "positive" },
+        { label: "Lender name matches property records", impact: "positive" },
+      ],
     },
     issue: null,
     evidence: {
@@ -232,15 +268,28 @@ export const FIELDS = [
       level: "low",
       pct: 40,
       reason:
-        "Only $1,200 of the $3,400 claimed is supported by uploaded receipts (Meridian Foodbank). The remaining $2,200 has no linked source document.",
+        "I can only account for $1,200 of the $3,400 claimed. The rest has no linked receipt. Without evidence for the remaining $2,200, I'd hold off on approving this deduction.",
+      factors: [
+        { label: "Meridian Foodbank receipt supports $1,200", impact: "positive" },
+        { label: "No source document for the remaining $2,200", impact: "negative" },
+        { label: "No prior-year record of larger contributions", impact: "neutral" },
+      ],
     },
     issue: {
-      title: "Missing supporting source for $2,200 of charitable contributions",
+      title: "$2,200 of the claimed charitable contributions has no receipt",
       summary:
         "The return claims $3,400 in cash contributions but only $1,200 is linked to an uploaded receipt.",
+      whyFlagged:
+        "For itemized cash contributions I look for a linked donation receipt or letter of acknowledgement. I found one for $1,200, but the remaining $2,200 has no source document, so I'm flagging it before you sign off on the deduction.",
+      uncertainty: [
+        "The client may have receipts that haven't been uploaded yet.",
+        "The $2,200 could reflect several smaller donations that don't require individual receipts — I can't tell without more information.",
+      ],
       recommendedAction:
         "Request the remaining donation receipts from the client, or attach an existing document. Do not accept without evidence.",
     },
+    assistantNote:
+      "The receipts I have only cover $1,200 of the $3,400 claimed. Want me to draft a request to the client for the missing documentation?",
     evidence: {
       docId: "doc-charitable-receipt",
       page: 1,
@@ -317,7 +366,11 @@ export const FIELDS = [
     confidence: {
       level: "high",
       pct: 99,
-      reason: "Value matches Box 2 of the uploaded W-2 exactly.",
+      reason: "This value comes straight from Box 2 of the W-2 with no interpretation needed.",
+      factors: [
+        { label: "Direct match to W-2 Box 2", impact: "positive" },
+        { label: "Box 2 numeric formatting is unambiguous", impact: "positive" },
+      ],
     },
     issue: null,
     evidence: {
@@ -351,15 +404,29 @@ export const FIELDS = [
       level: "medium",
       pct: 78,
       reason:
-        "Two W-2 documents were uploaded for the same employer. The original W-2 and a corrected W-2c disagree on Box 1 wages.",
+        "Both W-2 documents look valid and are for the same employer. A W-2c usually supersedes the original, but I don't want to make that call on your behalf — this needs a human decision.",
+      factors: [
+        { label: "Both documents are for the same employer + tax year", impact: "positive" },
+        { label: "W-2c is dated after the original W-2", impact: "positive" },
+        { label: "Box 1 values differ by $270", impact: "negative" },
+        { label: "No confirmation from client on which is authoritative", impact: "negative" },
+      ],
     },
     issue: {
-      title: "Two conflicting W-2 documents for Mainstage Engineering LLC",
+      title: "Two W-2s exist for Mainstage Engineering LLC — original and corrected",
       summary:
         "An original W-2 and a corrected W-2c were both uploaded. The system did not automatically select one. Choose which document to treat as authoritative.",
+      whyFlagged:
+        "When I find more than one W-2 for the same employer, I don't auto-pick a winner — even if a W-2c is typically authoritative. The choice affects the wages line and downstream calculations, so I surface both and let you decide.",
+      uncertainty: [
+        "I don't know whether the client received the W-2c because of an actual correction or as a duplicate.",
+        "I can't confirm from the document alone whether the original W-2 was rescinded.",
+      ],
       recommendedAction:
         "Confirm with the client which W-2 is authoritative. Typically the most recent W-2c supersedes the original.",
     },
+    assistantNote:
+      "Two W-2s came in for the same employer. I've kept both visible below — pick whichever you want me to treat as the source of truth.",
     evidence: {
       docId: "doc-w2-mainstage",
       page: 1,
@@ -390,7 +457,15 @@ export const FIELDS = [
     difference: 0,
     status: "verified",
     severity: "none",
-    confidence: { level: "high", pct: 99, reason: "Confirmed from client worksheet." },
+    confidence: {
+      level: "high",
+      pct: 99,
+      reason: "The client's worksheet explicitly states 'Single' with no ambiguity.",
+      factors: [
+        { label: "Client worksheet lists filing status as 'Single'", impact: "positive" },
+        { label: "No dependents reported on the return", impact: "positive" },
+      ],
+    },
     issue: null,
     evidence: {
       docId: "doc-taxpayer-worksheet",
