@@ -19,21 +19,18 @@ export function ConfidenceIndicator({ confidence, compact = false, className, te
       icon: ShieldCheck,
       classes: "bg-emerald-50 text-emerald-800 border-emerald-200",
       bar: "bg-emerald-500",
-      chipBg: "bg-emerald-100",
     },
     medium: {
       label: "Medium confidence",
       icon: ShieldQuestion,
       classes: "bg-amber-50 text-amber-800 border-amber-200",
       bar: "bg-amber-500",
-      chipBg: "bg-amber-100",
     },
     low: {
       label: "Low confidence",
       icon: ShieldAlert,
       classes: "bg-red-50 text-red-800 border-red-200",
       bar: "bg-red-500",
-      chipBg: "bg-red-100",
     },
   };
   const s = styles[level] || styles.medium;
@@ -85,7 +82,7 @@ export function ConfidenceIndicator({ confidence, compact = false, className, te
           </p>
           <ul className="space-y-1" data-testid="confidence-factors">
             {factors.map((f, i) => (
-              <ConfidenceFactor key={i} factor={f} chipBg={s.chipBg} />
+              <ConfidenceFactor key={i} factor={f} />
             ))}
           </ul>
         </div>
@@ -94,7 +91,7 @@ export function ConfidenceIndicator({ confidence, compact = false, className, te
   );
 }
 
-function ConfidenceFactor({ factor, chipBg }) {
+function ConfidenceFactor({ factor }) {
   const map = {
     positive: {
       icon: Plus,
@@ -129,4 +126,3 @@ function ConfidenceFactor({ factor, chipBg }) {
     </li>
   );
 }
-

@@ -1,13 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import React, { useEffect, useMemo } from "react";
+import { useNavigate, useParams, Navigate, useSearchParams } from "react-router-dom";
 import {
-  ChevronRight,
   ArrowLeft,
   Calendar,
   User,
   CheckCircle2,
   AlertTriangle,
-  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
@@ -16,9 +14,25 @@ import { useAppState, computeReviewProgress, unresolvedCount } from "@/store/app
 import { SectionNav } from "@/components/review/SectionNav";
 import { TaxFieldRow } from "@/components/review/TaxFieldRow";
 import { EvidencePanel } from "@/components/evidence/EvidencePanel";
-import { RETURNS } from "@/data/returns";
+import { WorkflowContextBar } from "@/components/navigation/WorkflowContextBar";
+import { ReturnStatusSummary } from "@/components/status/ReturnStatusSummary";
 import { SECTIONS } from "@/data/reviewIssues";
+import { deriveJordanWorkflow } from "@/data/workflow";
 import { formatDate } from "@/utils/format";
+import {
+  EVIDENCE_TABS,
+  activityHref,
+  documentsHref,
+  getSectionMeta,
+  queueHref,
+} from "@/utils/workflowContext";
+
+const REVIEW_SECTION_IDS = new Set(
+  SECTIONS.flatMap((section) => [
+    section.id,
+    ...(section.children || []).map((child) => child.id),
+  ]).filter((id) => id !== "documents" && id !== "activity")
+);
 
 /**
  * ReturnWorkspacePage — three-panel workspace: SectionNav | Fields | Evidence
@@ -26,17 +40,38 @@ import { formatDate } from "@/utils/format";
 export function ReturnWorkspacePage() {
   const { returnId } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const {
-    state: { fields, activeSectionId, selectedFieldId },
+    state: {
+      fields,
+      returns,
+      queueFilter,
+      queueSearch,
+      activeSectionId: storedSectionId,
+      selectedFieldId: storedFieldId,
+      activity,
+    },
     selectField,
     setSection,
   } = useAppState();
 
-  const ret = RETURNS.find((r) => r.id === returnId) || RETURNS[0];
+  const ret = returns.find((r) => r.id === returnId) || null;
 
-  const fieldsList = Object.values(fields);
+  const fieldsList = useMemo(() => Object.values(fields), [fields]);
   const progress = computeReviewProgress(fields);
   const unresolved = unresolvedCount(fields);
+  const requestedField = fields[searchParams.get("field")] || null;
+  const requestedSection = REVIEW_SECTION_IDS.has(searchParams.get("section"))
+    ? searchParams.get("section")
+    : null;
+  const activeSectionId = requestedField?.section || requestedSection || "wages";
+  const requestedTab = searchParams.get("tab");
+  const activeEvidenceTab = EVIDENCE_TABS.has(requestedTab) ? requestedTab : "summary";
+  const workflow = ret ? deriveJordanWorkflow(ret, fields) : null;
+  const queueContext = {
+    queueFilter: searchParams.get("queueFilter") || queueFilter,
+    queueSearch: searchParams.get("queueSearch") || queueSearch,
+  };
 
   // Compute fields to display for the active section (child or parent)
   const sectionFields = useMemo(() => {
@@ -51,42 +86,109 @@ export function ReturnWorkspacePage() {
   }, [activeSectionId, fieldsList]);
 
   // Selected field (for evidence panel)
-  const selectedField = selectedFieldId
-    ? fields[selectedFieldId]
-    : sectionFields[0] || null;
+  const selectedField =
+    requestedField &&
+    (requestedField.section === activeSectionId ||
+      requestedField.parentSection === activeSectionId)
+      ? requestedField
+      : sectionFields[0] || null;
 
-  // Ensure we always have a selection
+  // The URL is authoritative so direct links and refreshes restore the same field and tab.
   useEffect(() => {
-    if (!selectedFieldId && sectionFields.length > 0) {
-      selectField(sectionFields[0].id);
+    const next = new URLSearchParams(searchParams);
+    let changed = false;
+    if (next.get("section") !== activeSectionId) {
+      next.set("section", activeSectionId);
+      changed = true;
     }
-  }, [selectedFieldId, sectionFields, selectField]);
+    if (selectedField && next.get("field") !== selectedField.id) {
+      next.set("field", selectedField.id);
+      changed = true;
+    } else if (!selectedField && next.has("field")) {
+      next.delete("field");
+      changed = true;
+    }
+    if (next.get("tab") !== activeEvidenceTab) {
+      next.set("tab", activeEvidenceTab);
+      changed = true;
+    }
+    if (storedSectionId !== activeSectionId) setSection(activeSectionId);
+    if (storedFieldId !== (selectedField?.id || null)) {
+      selectField(selectedField?.id || null);
+    }
+    if (changed) setSearchParams(next, { replace: true });
+  }, [
+    activeEvidenceTab,
+    activeSectionId,
+    searchParams,
+    selectField,
+    selectedField,
+    setSearchParams,
+    setSection,
+    storedFieldId,
+    storedSectionId,
+  ]);
+
+  const updateReviewContext = ({ sectionId, fieldId, tab }) => {
+    const next = new URLSearchParams(searchParams);
+    if (sectionId) next.set("section", sectionId);
+    if (fieldId) next.set("field", fieldId);
+    else next.delete("field");
+    next.set("tab", tab || "summary");
+    setSearchParams(next);
+  };
 
   const handleSectionChange = (sectionId) => {
-    setSection(sectionId);
-    // pick first field of the new section
+    const context = {
+      returnId,
+      sectionId: selectedField?.section || activeSectionId,
+      fieldId: selectedField?.id,
+      tab: activeEvidenceTab,
+      documentId: selectedField?.evidence?.docId,
+      regionId: selectedField?.evidence?.regionId,
+      ...queueContext,
+    };
+    if (sectionId === "documents") {
+      navigate(documentsHref(context));
+      return;
+    }
+    if (sectionId === "activity") {
+      navigate(activityHref(context));
+      return;
+    }
     const isParent = SECTIONS.some((s) => s.id === sectionId && s.children?.length);
     const list = isParent
       ? fieldsList.filter((f) => f.parentSection === sectionId)
       : fieldsList.filter((f) => f.section === sectionId);
-    if (list.length > 0) {
-      selectField(list[0].id);
-    } else {
-      selectField(null);
-    }
+    updateReviewContext({
+      sectionId,
+      fieldId: list[0]?.id || null,
+      tab: "summary",
+    });
   };
 
-  const sectionMeta = useMemo(() => {
-    const flat = [];
-    SECTIONS.forEach((s) => {
-      flat.push({ ...s, path: [s.label] });
-      s.children?.forEach((c) => flat.push({ ...c, parent: s, path: [s.label, c.label] }));
-    });
-    return flat.find((s) => s.id === activeSectionId) || flat[0];
-  }, [activeSectionId]);
+  const sectionMeta = getSectionMeta(activeSectionId) || getSectionMeta("wages");
+
+  if (!ret?.workspaceAvailable) {
+    return <Navigate to={queueHref(queueContext)} replace />;
+  }
+
+  const workflowContext = {
+    returnId,
+    sectionId: activeSectionId,
+    fieldId: selectedField?.id,
+    tab: activeEvidenceTab,
+    ...queueContext,
+  };
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-slate-50">
+      <WorkflowContextBar
+        ret={ret}
+        field={selectedField}
+        sectionMeta={sectionMeta}
+        context={workflowContext}
+      />
       {/* Return header */}
       <div className="border-b border-slate-200 bg-white px-4 py-3 shrink-0">
         <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -96,18 +198,10 @@ export function ReturnWorkspacePage() {
               size="sm"
               className="h-7 text-xs text-slate-500 -ml-2"
               data-testid="back-to-queue-btn"
-              onClick={() => navigate("/")}
+              onClick={() => navigate(queueHref(queueContext))}
             >
-              <ArrowLeft className="w-3 h-3 mr-1" /> Queue
+              <ArrowLeft className="w-3 h-3 mr-1" /> Back to queue
             </Button>
-            <div className="text-[11px] text-slate-400 hidden md:flex items-center gap-1">
-              <ChevronRight className="w-3 h-3" />
-              <Link to="/" className="hover:text-slate-700">Review Queue</Link>
-              <ChevronRight className="w-3 h-3" />
-              <span className="text-slate-700">{ret.clientName}</span>
-              <ChevronRight className="w-3 h-3" />
-              <span className="text-slate-700">{sectionMeta.path.join(" / ")}</span>
-            </div>
           </div>
         </div>
         <div className="mt-2 flex items-center justify-between gap-4 flex-wrap">
@@ -181,6 +275,39 @@ export function ReturnWorkspacePage() {
         {/* Center panel */}
         <main className="flex-1 overflow-y-auto scrollbar-thin p-5 min-w-0">
           <div className="max-w-3xl">
+            {searchParams.get("event") && (
+              <div
+                className="mb-4 flex items-center justify-between gap-3 border border-sky-200 bg-sky-50 rounded-md px-3 py-2 text-xs text-sky-900"
+                data-testid="activity-return-context"
+              >
+                <span>
+                  Opened from activity event{" "}
+                  <span className="font-ibm-mono">{searchParams.get("event")}</span>. The
+                  related field is selected.
+                </span>
+                <button
+                  type="button"
+                  className="text-navy hover:underline shrink-0"
+                  onClick={() => navigate(activityHref({
+                    ...workflowContext,
+                    eventId: searchParams.get("event"),
+                  }))}
+                >
+                  Back to event
+                </button>
+              </div>
+            )}
+            <ReturnStatusSummary
+              ret={ret}
+              workflow={workflow}
+              onOpenBlocker={(blocker) =>
+                updateReviewContext({
+                  sectionId: blocker.sectionId,
+                  fieldId: blocker.fieldId,
+                  tab: "summary",
+                })
+              }
+            />
             <SectionHeader sectionMeta={sectionMeta} count={sectionFields.length} />
 
             {sectionFields.length === 0 ? (
@@ -191,8 +318,21 @@ export function ReturnWorkspacePage() {
                   <TaxFieldRow
                     key={f.id}
                     field={f}
-                    isSelected={selectedFieldId === f.id}
-                    onSelect={(id) => selectField(id)}
+                    isSelected={selectedField?.id === f.id}
+                    onSelect={(id) => {
+                      updateReviewContext({
+                        sectionId: fields[id]?.section,
+                        fieldId: id,
+                        tab: "summary",
+                      });
+                    }}
+                    onViewSource={(id) => {
+                      updateReviewContext({
+                        sectionId: fields[id]?.section,
+                        fieldId: id,
+                        tab: "source",
+                      });
+                    }}
                   />
                 ))}
               </div>
@@ -221,7 +361,26 @@ export function ReturnWorkspacePage() {
           </div>
         </main>
 
-        <EvidencePanel field={selectedField} onSelectField={(id) => selectField(id)} />
+        <EvidencePanel
+          field={selectedField}
+          onSelectField={(id) => {
+            updateReviewContext({
+              sectionId: fields[id]?.section,
+              fieldId: id,
+              tab: "summary",
+            });
+          }}
+          activeTab={activeEvidenceTab}
+          onTabChange={(tab) =>
+            updateReviewContext({
+              sectionId: activeSectionId,
+              fieldId: selectedField?.id,
+              tab,
+            })
+          }
+          context={workflowContext}
+          activity={activity}
+        />
       </div>
     </div>
   );

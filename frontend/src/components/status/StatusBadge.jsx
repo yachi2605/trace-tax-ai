@@ -1,6 +1,5 @@
 import React from "react";
 import {
-  Sparkles,
   Cpu,
   CheckCircle2,
   AlertTriangle,
@@ -10,7 +9,6 @@ import {
   FileWarning,
   GitBranch,
   Eye,
-  CircleDot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -16,7 +16,6 @@ import {
   Sigma,
   ArrowRight,
   GitBranch,
-  Info,
   Lightbulb,
   MailPlus,
   FileWarning,
@@ -25,9 +24,18 @@ import {
   MessageSquareText,
   HelpCircle,
   Search,
+  Link2,
+  History,
+  Calculator,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAppState } from "@/store/appStore";
+import { Link } from "react-router-dom";
+import {
+  activityHref,
+  documentsHref,
+  returnHref,
+} from "@/utils/workflowContext";
 
 /**
  * EvidencePanel — the right-side panel. Displays four tabs:
@@ -38,9 +46,15 @@ import { useAppState } from "@/store/appStore";
  *
  * This panel is the core of Challenge 01 + Challenge 10.
  */
-export function EvidencePanel({ field, onSelectField }) {
+export function EvidencePanel({
+  field,
+  onSelectField,
+  activeTab,
+  onTabChange,
+  context,
+  activity = [],
+}) {
   const { requestDocument, resolveConflictWith } = useAppState();
-  const [activeTab, setActiveTab] = useState("summary");
 
   if (!field) {
     return (
@@ -84,7 +98,7 @@ export function EvidencePanel({ field, onSelectField }) {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+      <Tabs value={activeTab} onValueChange={onTabChange} className="flex-1 flex flex-col overflow-hidden">
         <TabsList className="w-full justify-start rounded-none bg-white border-b border-slate-200 h-10 px-2 gap-0">
           <EvidenceTab value="summary" label="Summary" testId="evidence-tab-summary" />
           <EvidenceTab value="source" label="Source" testId="evidence-tab-source" />
@@ -192,8 +206,9 @@ export function EvidencePanel({ field, onSelectField }) {
                       <div className="flex-1">
                         <p className="text-sm text-rose-900 font-medium mb-1">Missing evidence</p>
                         <p className="text-xs text-rose-800/90 leading-relaxed">
-                          I wouldn't accept this value without a linked source. I can draft a
-                          document request for the client if that helps.
+                          {field.documentRequest?.status === "waiting-on-client"
+                            ? "Jordan Lee owns the next action. This return is blocked until the requested receipt is uploaded or the unsupported amount is clarified."
+                            : "I wouldn't accept this value without a linked source. I can draft a document request for the client if that helps."}
                         </p>
                         <div className="flex gap-2 mt-2">
                           <Button
@@ -201,6 +216,7 @@ export function EvidencePanel({ field, onSelectField }) {
                             variant="outline"
                             className="h-7 text-xs border-rose-300 text-rose-800 hover:bg-rose-100"
                             data-testid="request-document-btn"
+                            disabled={field.documentRequest?.status === "waiting-on-client"}
                             onClick={() => {
                               requestDocument(field.id);
                               toast.success("Document requested", {
@@ -208,7 +224,10 @@ export function EvidencePanel({ field, onSelectField }) {
                               });
                             }}
                           >
-                            <MailPlus className="w-3 h-3 mr-1" /> Request from client
+                            <MailPlus className="w-3 h-3 mr-1" />
+                            {field.documentRequest?.status === "waiting-on-client"
+                              ? "Waiting on Jordan Lee"
+                              : "Request from client"}
                           </Button>
                         </div>
                       </div>
@@ -225,15 +244,19 @@ export function EvidencePanel({ field, onSelectField }) {
                 <RecommendationProvenance field={field} />
               </div>
             )}
+            <RelatedObjectsCard field={field} context={context} activity={activity} />
           </TabsContent>
 
           {/* SOURCE TAB */}
           <TabsContent value="source" className="p-4 space-y-3 mt-0">
             {isAggregation ? (
               <>
-                <AggregationBreakdownView field={field} onSelectSource={() => onSelectField?.(field.id)} />
+                <AggregationBreakdownView
+                  field={field}
+                  context={context}
+                />
                 <TraceabilityChain field={field} />
-                <SupportingDocuments field={field} />
+                <SupportingDocuments field={field} context={context} />
               </>
             ) : doc ? (
               <>
@@ -259,9 +282,10 @@ export function EvidencePanel({ field, onSelectField }) {
                 <DocumentPreview
                   document={doc}
                   highlightRegionId={field.evidence.regionId}
+                  context={context}
                 />
                 <TraceabilityChain field={field} />
-                <SupportingDocuments field={field} />
+                <SupportingDocuments field={field} context={context} />
               </>
             ) : field.status === "locked" ? (
               <>
@@ -317,6 +341,112 @@ export function EvidencePanel({ field, onSelectField }) {
         </div>
       </Tabs>
     </aside>
+  );
+}
+
+function RelatedObjectsCard({ field, context, activity }) {
+  const relatedDocs = [
+    field.evidence?.docId,
+    ...(field.supportingDocuments || []).map((item) => item.docId),
+    ...(field.evidence?.transformation?.breakdown || []).map((item) => item.docId),
+    ...(field.evidence?.transformation?.conflictingSources || []).map((item) => item.docId),
+  ].filter((id, index, all) => id && all.indexOf(id) === index);
+  const activityCount = activity.filter((event) => event.fieldId === field.id).length;
+
+  return (
+    <div
+      className="border border-slate-200 rounded-md bg-white overflow-hidden"
+      data-testid="related-objects"
+    >
+      <div className="px-3 py-2 border-b border-slate-200 bg-slate-50 flex items-center gap-2">
+        <Link2 className="w-3.5 h-3.5 text-slate-600" />
+        <p className="text-[10px] uppercase tracking-wider text-slate-600 font-medium">
+          Related to this issue
+        </p>
+      </div>
+      <div className="divide-y divide-slate-100">
+        <RelatedLink
+          to={returnHref({ ...context, fieldId: field.id, sectionId: field.section, tab: "summary" })}
+          icon={FileText}
+          label="Tax return field"
+          value={`${field.formRef} · ${field.label}`}
+        />
+        {field.issue && (
+          <RelatedLink
+            to={returnHref({ ...context, fieldId: field.id, sectionId: field.section, tab: "summary" })}
+            icon={FileWarning}
+            label="Review issue"
+            value={field.issue.title}
+          />
+        )}
+        {relatedDocs.map((docId, index) => {
+          const document = getDocumentById(docId);
+          if (!document) return null;
+          const breakdownItem = field.evidence?.transformation?.breakdown?.find(
+            (item) => item.docId === docId
+          );
+          return (
+            <RelatedLink
+              key={docId}
+              to={documentsHref({
+                ...context,
+                fieldId: field.id,
+                sectionId: field.section,
+                documentId: docId,
+                regionId:
+                  breakdownItem?.regionId ||
+                  (index === 0 ? field.evidence?.regionId : undefined),
+              })}
+              icon={FileText}
+              label={relatedDocs.length > 1 ? "Contributing document" : "Source document"}
+              value={document.fileName}
+            />
+          );
+        })}
+        <RelatedLink
+          to={activityHref({
+            ...context,
+            fieldId: field.id,
+            sectionId: field.section,
+          })}
+          icon={History}
+          label="Relevant activity"
+          value={`${activityCount} related ${activityCount === 1 ? "event" : "events"}`}
+        />
+        {field.components?.length > 0 && (
+          <RelatedLink
+            to={returnHref({
+              ...context,
+              fieldId: field.components[0].id,
+              sectionId: field.components[0].section,
+              tab: "summary",
+            })}
+            icon={Calculator}
+            label="Related calculation"
+            value={`${field.components.length} contributing fields`}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RelatedLink({ to, icon: Icon, label, value }) {
+  return (
+    <Link
+      to={to}
+      className="flex items-start gap-2.5 px-3 py-2 hover:bg-slate-50 transition-colors group"
+    >
+      <Icon className="w-3.5 h-3.5 text-slate-400 group-hover:text-navy mt-0.5 shrink-0" />
+      <span className="min-w-0">
+        <span className="block text-[9px] uppercase tracking-wider text-slate-500">
+          {label}
+        </span>
+        <span className="block text-xs text-slate-800 group-hover:text-navy truncate">
+          {value}
+        </span>
+      </span>
+    </Link>
   );
 }
 
@@ -525,33 +655,7 @@ function ValueComparison({ field }) {
   );
 }
 
-function TransformationCard({ transformation }) {
-  if (!transformation) return null;
-  const typeMap = {
-    "direct-mapping": { icon: ArrowRight, label: "Direct mapping" },
-    "sum-of-multiple-sources": { icon: Sigma, label: "Sum of multiple sources" },
-    "rounded-value": { icon: Sigma, label: "Rounded value" },
-    "normalized-formatting": { icon: ArrowRight, label: "Normalized formatting" },
-    "manual-override": { icon: ArrowRight, label: "Manual override" },
-    conflict: { icon: GitBranch, label: "Conflicting sources" },
-    "partial-match": { icon: FileWarning, label: "Partial match" },
-  };
-  const meta = typeMap[transformation.type] || typeMap["direct-mapping"];
-  const Icon = meta.icon;
-  return (
-    <div className="border border-slate-200 rounded-md">
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-200 bg-slate-50">
-        <Icon className="w-3.5 h-3.5 text-slate-600" strokeWidth={2.25} />
-        <span className="text-[10px] uppercase tracking-wider text-slate-600 font-medium">
-          Transformation · {meta.label}
-        </span>
-      </div>
-      <p className="px-3 py-2 text-xs text-slate-700 leading-relaxed">{transformation.summary}</p>
-    </div>
-  );
-}
-
-function AggregationBreakdownView({ field, onSelectSource }) {
+function AggregationBreakdownView({ field, context }) {
   const t = field.evidence.transformation;
   return (
     <div className="space-y-3">
@@ -604,7 +708,11 @@ function AggregationBreakdownView({ field, onSelectSource }) {
             <p className="text-[10px] uppercase tracking-wider text-slate-500 font-medium mb-1.5">
               {b.label}
             </p>
-            <DocumentPreview document={d} highlightRegionId={b.regionId} />
+            <DocumentPreview
+              document={d}
+              highlightRegionId={b.regionId}
+              context={context}
+            />
           </div>
         );
       })}
@@ -735,7 +843,7 @@ function FieldHistory({ field }) {
         e.kind === "ai" ? (
           <AiExtractionEvent key={i} data={e.data} />
         ) : (
-          <HumanDecisionEvent key={i} data={e.data} field={field} />
+          <HumanDecisionEvent key={i} data={e.data} />
         )
       )}
     </div>
@@ -781,7 +889,7 @@ function AiExtractionEvent({ data }) {
   );
 }
 
-function HumanDecisionEvent({ data, field }) {
+function HumanDecisionEvent({ data }) {
   const meta = DECISION_META[data.action] || DECISION_META["manual-correction"];
   const Icon = meta.icon;
   const tint = meta.tint;

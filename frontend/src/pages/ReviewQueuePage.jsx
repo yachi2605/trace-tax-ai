@@ -1,17 +1,23 @@
-import React, { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useMemo } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Search, Calendar, User, ArrowRight, AlertTriangle, CheckCircle2, Clock, Inbox, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { RETURNS, FILTERS } from "@/data/returns";
+import { FILTERS } from "@/data/returns";
+import { useAppState } from "@/store/appStore";
 import { formatDate } from "@/utils/format";
+import { returnHref } from "@/utils/workflowContext";
 
 const stageMeta = {
   "CPA Review": { color: "text-navy bg-slate-100 border-slate-200", icon: null },
   "Ready for Review": { color: "text-sky-800 bg-sky-50 border-sky-200", icon: null },
+  "Preparation in Progress": { color: "text-sky-800 bg-sky-50 border-sky-200", icon: Clock },
+  "Documents Requested": { color: "text-amber-800 bg-amber-50 border-amber-200", icon: Clock },
   "Waiting on Client": { color: "text-amber-800 bg-amber-50 border-amber-200", icon: Clock },
+  "Ready to File": { color: "text-emerald-800 bg-emerald-50 border-emerald-200", icon: CheckCircle2 },
+  "Filed": { color: "text-emerald-800 bg-emerald-50 border-emerald-200", icon: CheckCircle2 },
   "Completed": { color: "text-emerald-800 bg-emerald-50 border-emerald-200", icon: CheckCircle2 },
 };
 
@@ -24,11 +30,33 @@ const severityMeta = {
 
 export function ReviewQueuePage() {
   const navigate = useNavigate();
-  const [filter, setFilter] = useState("all");
-  const [search, setSearch] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const {
+    state: { returns, queueFilter: storedFilter, queueSearch: storedSearch },
+    setQueueFilter: setFilter,
+    setQueueSearch: setSearch,
+  } = useAppState();
+  const requestedFilter = searchParams.get("filter");
+  const filter = FILTERS.some((item) => item.id === requestedFilter)
+    ? requestedFilter
+    : storedFilter;
+  const search = searchParams.has("search")
+    ? searchParams.get("search")
+    : storedSearch;
+
+  const updateQueueContext = ({ nextFilter = filter, nextSearch = search }) => {
+    const next = new URLSearchParams(searchParams);
+    if (nextFilter && nextFilter !== "all") next.set("filter", nextFilter);
+    else next.delete("filter");
+    if (nextSearch) next.set("search", nextSearch);
+    else next.delete("search");
+    setFilter(nextFilter || "all");
+    setSearch(nextSearch || "");
+    setSearchParams(next, { replace: true });
+  };
 
   const filteredReturns = useMemo(() => {
-    let list = RETURNS;
+    let list = returns;
     if (filter !== "all") {
       list = list.filter(
         (r) => r.filter === filter || (r.filterAlsoIn || []).includes(filter)
@@ -39,18 +67,18 @@ export function ReviewQueuePage() {
       list = list.filter((r) => r.clientName.toLowerCase().includes(q));
     }
     return list;
-  }, [filter, search]);
+  }, [filter, search, returns]);
 
   const filterCounts = useMemo(() => {
-    const counts = { all: RETURNS.length };
+    const counts = { all: returns.length };
     FILTERS.forEach((f) => {
       if (f.id === "all") return;
-      counts[f.id] = RETURNS.filter(
+      counts[f.id] = returns.filter(
         (r) => r.filter === f.id || (r.filterAlsoIn || []).includes(f.id)
       ).length;
     });
     return counts;
-  }, []);
+  }, [returns]);
 
   return (
     <main className="flex-1 flex flex-col overflow-hidden bg-slate-50">
@@ -74,7 +102,7 @@ export function ReviewQueuePage() {
               <Input
                 data-testid="queue-search-input"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => updateQueueContext({ nextSearch: e.target.value })}
                 placeholder="Search by client name…"
                 className="pl-8 h-9 w-64 text-sm"
                 aria-label="Search returns by client name"
@@ -92,7 +120,7 @@ export function ReviewQueuePage() {
             return (
               <button
                 key={f.id}
-                onClick={() => setFilter(f.id)}
+                onClick={() => updateQueueContext({ nextFilter: f.id })}
                 data-testid={`filter-${f.id}`}
                 className={cn(
                   "px-3 py-2.5 text-xs font-medium border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap",
@@ -120,7 +148,11 @@ export function ReviewQueuePage() {
       <div className="flex-1 overflow-y-auto scrollbar-thin px-6 py-5">
         <div className="max-w-[1400px] mx-auto">
           {filteredReturns.length === 0 ? (
-            <EmptyState search={search} filter={filter} onClear={() => { setSearch(""); setFilter("all"); }} />
+            <EmptyState
+              search={search}
+              filter={filter}
+              onClear={() => updateQueueContext({ nextSearch: "", nextFilter: "all" })}
+            />
           ) : (
             <div className="bg-white border border-slate-200 rounded-md overflow-hidden">
               {/* Table header */}
@@ -136,7 +168,24 @@ export function ReviewQueuePage() {
               <ul className="divide-y divide-slate-200">
                 {filteredReturns.map((r) => (
                   <li key={r.id}>
-                    <ReturnRow ret={r} onOpen={() => navigate(`/returns/${r.id}`)} />
+                    <ReturnRow
+                      ret={r}
+                      onOpen={
+                        r.workspaceAvailable
+                          ? () =>
+                              navigate(
+                                returnHref({
+                                  returnId: r.id,
+                                  sectionId: "wages",
+                                  fieldId: "field-wages-1a",
+                                  tab: "summary",
+                                  queueFilter: filter,
+                                  queueSearch: search,
+                                })
+                              )
+                          : null
+                      }
+                    />
                   </li>
                 ))}
               </ul>
@@ -156,13 +205,8 @@ function ReturnRow({ ret, onOpen }) {
   return (
     <div
       data-testid={`return-row-${ret.id}`}
-      className="grid grid-cols-1 md:grid-cols-12 gap-3 px-4 py-3 items-center hover:bg-slate-50 transition-colors cursor-pointer"
-      onClick={onOpen}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") onOpen();
-      }}
+      className="grid grid-cols-1 md:grid-cols-12 gap-3 px-4 py-3 items-center transition-colors"
+      aria-disabled={!onOpen}
     >
       {/* Client */}
       <div className="md:col-span-3 flex items-center gap-3 min-w-0">
@@ -188,6 +232,11 @@ function ReturnRow({ ret, onOpen }) {
           {StageIcon && <StageIcon className="w-3 h-3" strokeWidth={2.25} />}
           {ret.stage}
         </span>
+        {ret.stageContext && (
+          <p className="text-[10px] text-slate-500 mt-1 leading-snug line-clamp-2">
+            {ret.stageContext}
+          </p>
+        )}
       </div>
 
       {/* Issues */}
@@ -205,6 +254,9 @@ function ReturnRow({ ret, onOpen }) {
         <span className="text-[11px] font-ibm-mono tabular-nums text-slate-600">
           {ret.unresolvedIssues} open
         </span>
+        {ret.blockers?.[0] && (
+          <span className="sr-only">Blocker: {ret.blockers[0].detail}</span>
+        )}
       </div>
 
       {/* Progress */}
@@ -225,6 +277,11 @@ function ReturnRow({ ret, onOpen }) {
           <User className="w-3 h-3 text-slate-400" />
           {ret.assignedTo}
         </div>
+        {ret.actionOwner && (
+          <div className="mt-0.5 text-[10px] text-slate-500 truncate" title={ret.nextAction}>
+            Next owner: {ret.actionOwner}
+          </div>
+        )}
       </div>
 
       {/* Action */}
@@ -233,13 +290,15 @@ function ReturnRow({ ret, onOpen }) {
           size="sm"
           className="h-7 text-xs bg-navy hover:bg-navy-700 text-white"
           data-testid={`review-return-btn-${ret.id}`}
+          disabled={!onOpen}
+          title={!onOpen ? "The field-level prototype is available for Jordan Lee only." : undefined}
           onClick={(e) => {
             e.stopPropagation();
-            onOpen();
+            onOpen?.();
           }}
         >
-          Review
-          <ArrowRight className="w-3 h-3 ml-1" />
+          {onOpen ? "Review" : "Demo unavailable"}
+          {onOpen && <ArrowRight className="w-3 h-3 ml-1" />}
         </Button>
       </div>
     </div>

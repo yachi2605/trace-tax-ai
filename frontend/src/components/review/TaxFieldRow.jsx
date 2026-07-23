@@ -25,7 +25,7 @@ import { ReviewActionDialog } from "@/components/review/ReviewActionDialog";
  *   - Locked:                   lock icon, non-editable, "go to components" hint
  *   - Manual override:          indigo accent + prior value link
  */
-export function TaxFieldRow({ field, isSelected, onSelect }) {
+export function TaxFieldRow({ field, isSelected, onSelect, onViewSource }) {
   const [dialogMode, setDialogMode] = useState(null); // "accept" | "keep" | "manual"
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -42,6 +42,7 @@ export function TaxFieldRow({ field, isSelected, onSelect }) {
 
   const openDialog = (mode, e) => {
     e?.stopPropagation();
+    onSelect?.(field.id);
     setDialogMode(mode);
     setDialogOpen(true);
   };
@@ -61,8 +62,6 @@ export function TaxFieldRow({ field, isSelected, onSelect }) {
               : field.status === "locked"
                 ? "border-slate-200 bg-slate-50/50"
                 : "border-slate-200 hover:border-slate-300";
-
-  const isRowClickable = field.status !== "locked" && field.status !== "read-only" ? true : true; // still clickable
 
   return (
     <>
@@ -150,26 +149,43 @@ export function TaxFieldRow({ field, isSelected, onSelect }) {
                 <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" strokeWidth={2.25} /> Use suggested value
               </Button>
             )}
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs focus-visible:ring-2 focus-visible:ring-navy focus-visible:ring-offset-1 transition-all"
-              onClick={(e) => openDialog("keep", e)}
-              data-testid={`keep-current-btn-${field.id}`}
-              aria-label={`Keep the current value for ${field.label}`}
-            >
-              <XCircle className="w-3.5 h-3.5 mr-1.5" strokeWidth={2.25} /> Keep current value
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs focus-visible:ring-2 focus-visible:ring-navy focus-visible:ring-offset-1 transition-all"
-              onClick={(e) => openDialog("manual", e)}
-              data-testid={`manual-correction-btn-${field.id}`}
-              aria-label={`Enter your own value for ${field.label}`}
-            >
-              <PencilLine className="w-3.5 h-3.5 mr-1.5" strokeWidth={2.25} /> Enter my own value
-            </Button>
+            {field.status === "conflicting-evidence" ? (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 text-xs focus-visible:ring-2 focus-visible:ring-navy focus-visible:ring-offset-1 transition-all"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelect?.(field.id);
+                }}
+                data-testid={`review-conflict-btn-${field.id}`}
+              >
+                Review conflicting sources
+              </Button>
+            ) : (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs focus-visible:ring-2 focus-visible:ring-navy focus-visible:ring-offset-1 transition-all"
+                  onClick={(e) => openDialog("keep", e)}
+                  data-testid={`keep-current-btn-${field.id}`}
+                  aria-label={`Keep the current value for ${field.label}`}
+                >
+                  <XCircle className="w-3.5 h-3.5 mr-1.5" strokeWidth={2.25} /> Keep current value
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8 text-xs focus-visible:ring-2 focus-visible:ring-navy focus-visible:ring-offset-1 transition-all"
+                  onClick={(e) => openDialog("manual", e)}
+                  data-testid={`manual-correction-btn-${field.id}`}
+                  aria-label={`Enter your own value for ${field.label}`}
+                >
+                  <PencilLine className="w-3.5 h-3.5 mr-1.5" strokeWidth={2.25} /> Enter my own value
+                </Button>
+              </>
+            )}
             {field.evidence?.docId && (
               <Button
                 size="sm"
@@ -178,7 +194,7 @@ export function TaxFieldRow({ field, isSelected, onSelect }) {
                 data-testid={`view-source-btn-${field.id}`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onSelect?.(field.id, "source");
+                  onViewSource?.(field.id);
                 }}
               >
                 <FileText className="w-3.5 h-3.5 mr-1" strokeWidth={2.25} /> View source

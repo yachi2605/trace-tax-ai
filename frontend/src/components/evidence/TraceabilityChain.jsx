@@ -3,7 +3,6 @@ import { cn } from "@/lib/utils";
 import {
   ArrowDown,
   FileText,
-  Search,
   Sigma,
   Layers,
   ArrowRight,

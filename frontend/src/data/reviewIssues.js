@@ -506,11 +506,11 @@ export const FIELDS = [
     id: "field-wages-employer",
     section: "wages",
     parentSection: "income",
-    label: "Employer name",
-    formRef: "W-2 · Box c",
-    currentValue: "Mainstage Engineering LLC",
-    aiSuggestedValue: "Mainstage Engineering LLC",
-    difference: 0,
+    label: "Authoritative W-2",
+    formRef: "W-2 source selection",
+    currentValue: "Not selected",
+    aiSuggestedValue: null,
+    difference: null,
     status: "conflicting-evidence",
     severity: "medium",
     confidence: {
@@ -544,7 +544,7 @@ export const FIELDS = [
       docId: "doc-w2-mainstage",
       page: 1,
       regionId: "w2-employer",
-      sourceValue: "Mainstage Engineering LLC",
+      sourceValue: null,
       transformation: {
         type: "conflict",
         summary: "Two source documents disagree.",
@@ -619,14 +619,6 @@ export const FIELDS = [
 // Quick helpers
 export function getFieldById(id) {
   return FIELDS.find((f) => f.id === id) || null;
-}
-
-export function getFieldsBySection(sectionId) {
-  return FIELDS.filter((f) => f.section === sectionId);
-}
-
-export function getFieldsByParent(parentSectionId) {
-  return FIELDS.filter((f) => f.parentSection === parentSectionId);
 }
 
 // Count unresolved issues per section for the left nav

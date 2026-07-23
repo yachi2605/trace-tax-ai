@@ -15,7 +15,14 @@ export function formatCurrency(value, options = {}) {
 
 export function formatDate(iso, style = "short") {
   if (!iso) return "—";
-  const d = new Date(iso);
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(iso);
+  const d = dateOnly
+    ? new Date(
+        Number(iso.slice(0, 4)),
+        Number(iso.slice(5, 7)) - 1,
+        Number(iso.slice(8, 10))
+      )
+    : new Date(iso);
   if (style === "relative") {
     const diff = Date.now() - d.getTime();
     const mins = Math.round(diff / 60000);
@@ -37,32 +44,4 @@ export function formatDate(iso, style = "short") {
     });
   }
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
-export function classForSeverity(sev) {
-  switch (sev) {
-    case "high":
-      return "text-red-700 bg-red-50 border-red-200";
-    case "medium":
-      return "text-amber-700 bg-amber-50 border-amber-200";
-    case "low":
-      return "text-slate-600 bg-slate-50 border-slate-200";
-    default:
-      return "text-slate-500 bg-slate-50 border-slate-200";
-  }
-}
-
-export function labelForStatus(status) {
-  const map = {
-    "ai-generated": "AI-generated",
-    "needs-review": "Needs review",
-    verified: "Verified",
-    editable: "Editable",
-    "read-only": "Read-only",
-    locked: "Locked",
-    "manually-corrected": "Manual override",
-    "missing-source": "Missing source",
-    "conflicting-evidence": "Conflicting evidence",
-  };
-  return map[status] || status;
 }

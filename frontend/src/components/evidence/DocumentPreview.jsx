@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ZoomIn, ZoomOut, ExternalLink, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import { documentsHref } from "@/utils/workflowContext";
 
 /**
  * DocumentPreview — Simulated tax document viewer with region highlighting.
@@ -12,7 +14,13 @@ import { Button } from "@/components/ui/button";
  *
  * This is the visual proof for Challenge 01: source document traceability.
  */
-export function DocumentPreview({ document, highlightRegionId, className, expanded = false }) {
+export function DocumentPreview({
+  document,
+  highlightRegionId,
+  className,
+  expanded = false,
+  context,
+}) {
   const [zoom, setZoom] = useState(1);
   if (!document) {
     return (
@@ -135,13 +143,20 @@ export function DocumentPreview({ document, highlightRegionId, className, expand
           {" · "}
           {document.sizeKb} KB
         </span>
-        <button
-          className="inline-flex items-center gap-1 text-navy hover:text-navy-700 font-medium"
-          data-testid="doc-open-full"
-          onClick={(e) => e.preventDefault()}
-        >
-          Open full document <ExternalLink className="w-3 h-3" />
-        </button>
+        {!expanded && (
+          <Link
+            to={documentsHref({
+              returnId: "ret-2025-001",
+              ...context,
+              documentId: document.id,
+              regionId: highlightRegionId,
+            })}
+            className="inline-flex items-center gap-1 text-navy hover:text-navy-700 font-medium"
+            data-testid="doc-open-full"
+          >
+            Open full document <ExternalLink className="w-3 h-3" />
+          </Link>
+        )}
       </div>
     </div>
   );

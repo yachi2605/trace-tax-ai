@@ -31,7 +31,7 @@ export function ReviewActionDialog({ open, onOpenChange, field, mode }) {
   const [reason, setReason] = useState("");
   const [reasonCategory, setReasonCategory] = useState("corrected-source");
   const [newValue, setNewValue] = useState("");
-  const [showError, setShowError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -40,7 +40,7 @@ export function ReviewActionDialog({ open, onOpenChange, field, mode }) {
       setNewValue(
         typeof field?.currentValue === "number" ? String(field.currentValue) : field?.currentValue || ""
       );
-      setShowError(false);
+      setErrorMessage("");
     }
   }, [open, field]);
 
@@ -56,7 +56,7 @@ export function ReviewActionDialog({ open, onOpenChange, field, mode }) {
 
   const handleKeep = () => {
     if (!reason.trim()) {
-      setShowError(true);
+      setErrorMessage("Explanation is required for the audit trail.");
       return;
     }
     keepCurrent(field.id, reason, reasonCategory);
@@ -67,12 +67,20 @@ export function ReviewActionDialog({ open, onOpenChange, field, mode }) {
   };
 
   const handleManual = () => {
-    if (!reason.trim() || !newValue.trim()) {
-      setShowError(true);
+    if (!newValue.trim()) {
+      setErrorMessage("New value is required.");
+      return;
+    }
+    if (!reason.trim()) {
+      setErrorMessage("Explanation is required for the audit trail.");
       return;
     }
     const parsed =
       typeof field.currentValue === "number" ? Number(newValue.replace(/[$,\s]/g, "")) : newValue;
+    if (typeof field.currentValue === "number" && !Number.isFinite(parsed)) {
+      setErrorMessage("Enter a valid numeric value.");
+      return;
+    }
     manualCorrection(field.id, parsed, reason, reasonCategory);
     toast.success("Manual correction saved", {
       description: `${field.label} updated. Original suggestion is preserved in History.`,
@@ -142,7 +150,10 @@ export function ReviewActionDialog({ open, onOpenChange, field, mode }) {
               id="new-value"
               data-testid="manual-new-value-input"
               value={newValue}
-              onChange={(e) => setNewValue(e.target.value)}
+              onChange={(e) => {
+                setNewValue(e.target.value);
+                if (e.target.value.trim()) setErrorMessage("");
+              }}
               className="font-ibm-mono mt-1"
               placeholder={typeof field.currentValue === "number" ? "0.00" : "value"}
             />
@@ -179,23 +190,20 @@ export function ReviewActionDialog({ open, onOpenChange, field, mode }) {
                 value={reason}
                 onChange={(e) => {
                   setReason(e.target.value);
-                  if (e.target.value.trim()) setShowError(false);
+                  if (e.target.value.trim()) setErrorMessage("");
                 }}
                 className="mt-1 text-sm resize-none"
                 rows={3}
                 placeholder="Explain why this change is being made. This will be recorded in the audit trail."
               />
             </div>
-            {showError && (
+            {errorMessage && (
               <div
                 className="flex items-center gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2.5 py-1.5"
                 role="alert"
               >
                 <AlertCircle className="w-3.5 h-3.5" />
-                <span>
-                  {mode === "manual" && !newValue.trim() ? "New value is required. " : ""}
-                  Explanation is required for the audit trail.
-                </span>
+                <span>{errorMessage}</span>
               </div>
             )}
           </div>

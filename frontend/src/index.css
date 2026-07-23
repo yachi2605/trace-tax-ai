@@ -77,12 +77,6 @@ code, .font-mono {
     }
 }
 
-@layer base {
-    [data-debug-wrapper="true"] {
-        display: contents !important;
-    }
-}
-
 /* Focus rings — visible for keyboard users */
 button:focus-visible,
 a:focus-visible,

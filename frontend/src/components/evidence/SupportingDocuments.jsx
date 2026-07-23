@@ -3,6 +3,8 @@ import { cn } from "@/lib/utils";
 import { FileText, Star } from "lucide-react";
 import { getDocumentById } from "@/data/documents";
 import { formatDate } from "@/utils/format";
+import { Link } from "react-router-dom";
+import { documentsHref } from "@/utils/workflowContext";
 
 /**
  * SupportingDocuments — lists every document that contributes to a value,
@@ -11,7 +13,7 @@ import { formatDate } from "@/utils/format";
  * Falls back to a compact list of aggregation breakdown docs when the field
  * does not declare an explicit supportingDocuments array.
  */
-export function SupportingDocuments({ field, className, onSelectDoc }) {
+export function SupportingDocuments({ field, className, context }) {
   const explicit = field?.supportingDocuments;
   const breakdown = field?.evidence?.transformation?.breakdown;
 
@@ -51,9 +53,17 @@ export function SupportingDocuments({ field, className, onSelectDoc }) {
           if (!doc) return null;
           return (
             <li key={i} data-testid={`supporting-doc-${sd.role}`}>
-              <button
-                type="button"
-                onClick={() => onSelectDoc?.(doc)}
+              <Link
+                to={documentsHref({
+                  returnId: "ret-2025-001",
+                  ...context,
+                  fieldId: field.id,
+                  sectionId: field.section,
+                  documentId: doc.id,
+                  regionId:
+                    breakdown?.find((item) => item.docId === doc.id)?.regionId ||
+                    (field.evidence?.docId === doc.id ? field.evidence?.regionId : undefined),
+                })}
                 className="w-full flex items-start gap-2.5 px-3 py-2 hover:bg-slate-50 transition-colors text-left group"
               >
                 <div
@@ -78,7 +88,7 @@ export function SupportingDocuments({ field, className, onSelectDoc }) {
                     Uploaded {formatDate(doc.uploadedAt)}
                   </p>
                 </div>
-              </button>
+              </Link>
             </li>
           );
         })}

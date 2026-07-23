@@ -3,17 +3,53 @@ import { Link, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { CURRENT_USER } from "@/data/returns";
 import { LayoutList, FolderOpen, History, FileSignature, Search } from "lucide-react";
+import { useAppState } from "@/store/appStore";
+import {
+  activityHref,
+  documentsHref,
+  queueHref,
+  returnHref,
+} from "@/utils/workflowContext";
 
 /**
  * TopBar — global application shell header. Consistent across pages.
  */
 export function TopBar() {
   const location = useLocation();
+  const {
+    state: {
+      fields,
+      selectedFieldId,
+      activeSectionId,
+      queueFilter,
+      queueSearch,
+    },
+  } = useAppState();
+  const params = new URLSearchParams(location.search);
+  const pathReturnId = location.pathname.match(/^\/returns\/([^/]+)/)?.[1];
+  const returnId = pathReturnId || params.get("returnId") || "ret-2025-001";
+  const fieldId = params.get("field") || selectedFieldId || "field-wages-1a";
+  const field = fields[fieldId];
+  const sectionId = field?.section || params.get("section") || activeSectionId || "wages";
+  const contextualQueueFilter =
+    params.get("queueFilter") || params.get("filter") || queueFilter;
+  const contextualQueueSearch =
+    params.get("queueSearch") || params.get("search") || queueSearch;
+  const context = {
+    returnId,
+    sectionId,
+    fieldId,
+    tab: params.get("tab") || "summary",
+    documentId: params.get("document") || field?.evidence?.docId,
+    regionId: params.get("region") || field?.evidence?.regionId,
+    queueFilter: contextualQueueFilter,
+    queueSearch: contextualQueueSearch,
+  };
   const nav = [
-    { to: "/", label: "Review Queue", icon: LayoutList, testId: "top-nav-queue" },
-    { to: "/returns/ret-2025-001", label: "Returns", icon: FileSignature, testId: "top-nav-returns" },
-    { to: "/documents", label: "Documents", icon: FolderOpen, testId: "top-nav-documents" },
-    { to: "/activity", label: "Activity", icon: History, testId: "top-nav-activity" },
+    { to: queueHref(context), path: "/", label: "Review Queue", icon: LayoutList, testId: "top-nav-queue" },
+    { to: returnHref(context), path: "/returns", label: "Returns", icon: FileSignature, testId: "top-nav-returns" },
+    { to: documentsHref(context), path: "/documents", label: "Documents", icon: FolderOpen, testId: "top-nav-documents" },
+    { to: activityHref(context), path: "/activity", label: "Activity", icon: History, testId: "top-nav-activity" },
   ];
 
   return (
@@ -39,7 +75,10 @@ export function TopBar() {
         <nav className="flex items-center gap-1" aria-label="Primary">
           {nav.map((item) => {
             const Icon = item.icon;
-            const isActive = item.to === "/" ? location.pathname === "/" : location.pathname.startsWith(item.to.split("/").slice(0, 2).join("/"));
+            const isActive =
+              item.path === "/"
+                ? location.pathname === "/"
+                : location.pathname.startsWith(item.path);
             return (
               <Link
                 key={item.to}

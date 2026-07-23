@@ -1,8 +1,0 @@
-/* App.css — TraceTax AI
- * Global app-level styles. Layout and design tokens live in index.css and Tailwind.
- * Keep this file intentionally minimal.
- */
-
-.App {
-    text-align: left; /* NEVER center-align the CPA workspace */
-}
