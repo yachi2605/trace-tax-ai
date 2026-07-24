@@ -48,6 +48,16 @@ export function returnHref(context) {
   return `/returns/${context.returnId}${query ? `?${query}` : ""}`;
 }
 
+export function returnStatusHref(context) {
+  const params = new URLSearchParams();
+  if (context.queueFilter && context.queueFilter !== "all") {
+    params.set("queueFilter", context.queueFilter);
+  }
+  if (context.queueSearch) params.set("queueSearch", context.queueSearch);
+  const query = params.toString();
+  return `/returns/${context.returnId}/status${query ? `?${query}` : ""}`;
+}
+
 export function documentsHref(context) {
   const params = contextParams(context);
   params.delete("tab");

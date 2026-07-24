@@ -48,15 +48,16 @@ The depicted Next.js API layer, PostgreSQL database, authentication, document st
 - Conflicting-source selection and missing-document request events
 - Live workspace progress, open-issue counts, and field status updates
 - Derived lifecycle stages, next-action ownership, blockers, waiting-on-client, and ready-to-file states
-- Per-field history and a global in-memory audit trail
+- Automatic mock recalculation of locked totals after component-field decisions
+- Per-field history and a global audit trail retained for the active browser tab
 
 ## What is simulated
 
 - OCR and document parsing; previews are stylized React-rendered documents rather than parsed PDFs
 - AI extraction, recommendations, reasoning, and confidence scores; all are predefined
-- Tax calculations and validation logic beyond the review-form inputs
+- Tax logic; the two demonstrated calculated fields use transparent, scripted mock formulas
 - Authentication and authorization; the current reviewer is hardcoded
-- Persistence; workflow state and new audit events exist only in memory and reset on refresh
+- Persistence; review state uses browser `sessionStorage`, not a server or database
 
 ## Tech stack
 
@@ -94,7 +95,7 @@ For Vercel, set the root directory to `frontend` and use the Create React App pr
 
 ## Known limitations
 
-- The field-level review workspace is implemented for Jordan Lee; other queue rows are non-interactive context data.
-- URL context survives refresh, but field decisions and lifecycle transitions still reset because there is no persistence layer.
+- The field-level review workspace is implemented for Jordan Lee; other queue rows are non-interactive lifecycle context.
+- Review state persists only for the active browser tab and is not shared across users or devices.
 - Source documents are visual simulations, and the “Open full document” control does not open a real file.
-- Tax calculations, OCR quality, and AI confidence are not computed.
+- OCR quality, AI confidence, and production tax calculations are not computed.

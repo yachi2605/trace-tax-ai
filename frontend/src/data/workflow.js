@@ -152,12 +152,58 @@ export function getStaticWorkflow(ret) {
   const stepStatus = Object.fromEntries(
     RETURN_LIFECYCLE.map((step) => [step.id, "upcoming"])
   );
-  const currentIndex = RETURN_LIFECYCLE.findIndex((step) => step.id === stageId);
 
-  RETURN_LIFECYCLE.forEach((step, index) => {
-    if (index < currentIndex) stepStatus[step.id] = "complete";
-    if (index === currentIndex) stepStatus[step.id] = "current";
-  });
+  const markComplete = (...ids) => {
+    ids.forEach((id) => {
+      stepStatus[id] = "complete";
+    });
+  };
+
+  if (stageId === "documents-requested") {
+    stepStatus["documents-requested"] = "current";
+  } else if (stageId === "documents-received") {
+    markComplete("documents-requested");
+    stepStatus["documents-received"] = "current";
+  } else if (stageId === "ai-extraction-complete") {
+    markComplete("documents-requested", "documents-received");
+    stepStatus["ai-extraction-complete"] = "current";
+  } else if (stageId === "preparation-in-progress") {
+    markComplete("documents-requested", "documents-received", "ai-extraction-complete");
+    stepStatus["preparation-in-progress"] = "current";
+  } else if (stageId === "cpa-review") {
+    markComplete(
+      "documents-requested",
+      "documents-received",
+      "ai-extraction-complete",
+      "preparation-in-progress"
+    );
+    stepStatus["cpa-review"] = "current";
+  } else if (stageId === "waiting-on-client") {
+    markComplete("documents-requested", "documents-received", "ai-extraction-complete");
+    stepStatus["preparation-in-progress"] = "paused";
+    stepStatus["waiting-on-client"] = "current";
+  } else if (stageId === "ready-to-file") {
+    markComplete(
+      "documents-requested",
+      "documents-received",
+      "ai-extraction-complete",
+      "preparation-in-progress",
+      "cpa-review"
+    );
+    stepStatus["waiting-on-client"] = "skipped";
+    stepStatus["ready-to-file"] = "current";
+  } else if (stageId === "filed") {
+    markComplete(
+      "documents-requested",
+      "documents-received",
+      "ai-extraction-complete",
+      "preparation-in-progress",
+      "cpa-review",
+      "ready-to-file"
+    );
+    stepStatus["waiting-on-client"] = "skipped";
+    stepStatus["filed"] = "current";
+  }
 
   return {
     stageId,

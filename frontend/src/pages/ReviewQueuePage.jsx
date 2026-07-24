@@ -291,13 +291,13 @@ function ReturnRow({ ret, onOpen }) {
           className="h-7 text-xs bg-navy hover:bg-navy-700 text-white"
           data-testid={`review-return-btn-${ret.id}`}
           disabled={!onOpen}
-          title={!onOpen ? "The field-level prototype is available for Jordan Lee only." : undefined}
+          title={!onOpen ? "Field-level review is available for Jordan Lee only." : undefined}
           onClick={(e) => {
             e.stopPropagation();
             onOpen?.();
           }}
         >
-          {onOpen ? "Review" : "Demo unavailable"}
+          Review
           {onOpen && <ArrowRight className="w-3 h-3 ml-1" />}
         </Button>
       </div>

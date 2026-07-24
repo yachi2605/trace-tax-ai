@@ -67,7 +67,11 @@ export function ReturnStatusSummary({ ret, workflow, onOpenBlocker }) {
           <div className="flex items-center justify-between text-[10px] text-slate-500 mb-1">
             <span>Review progress</span>
             <span className="font-ibm-mono font-semibold text-slate-800">
-              {workflow.resolved}/{workflow.totalReviewable || 0} fields · {workflow.progress}%
+              {Number.isFinite(workflow.resolved) &&
+              Number.isFinite(workflow.totalReviewable)
+                ? `${workflow.resolved}/${workflow.totalReviewable} fields · `
+                : ""}
+              {workflow.progress}%
             </span>
           </div>
           <Progress value={workflow.progress} className="h-2 bg-slate-200" />
@@ -155,25 +159,23 @@ export function ReturnStatusSummary({ ret, workflow, onOpenBlocker }) {
           <ul className="space-y-1.5">
             {workflow.blockers.map((blocker) => (
               <li key={blocker.id}>
-                <button
-                  type="button"
-                  className="w-full flex items-start gap-2 text-left border border-amber-200 bg-amber-50 rounded px-2.5 py-2 hover:border-amber-300 transition-colors"
-                  onClick={() => onOpenBlocker?.(blocker)}
-                  data-testid={`status-blocker-${blocker.fieldId}`}
-                >
-                  <AlertTriangle className="w-3.5 h-3.5 text-amber-700 mt-0.5 shrink-0" />
-                  <span className="flex-1 min-w-0">
-                    <span className="block text-xs font-medium text-amber-950">
-                      {blocker.label}
-                    </span>
-                    <span className="block text-[11px] text-amber-900/80 mt-0.5">
-                      {blocker.detail}
-                    </span>
-                  </span>
-                  <span className="text-[10px] text-amber-800 shrink-0">
-                    Owner: {blocker.owner}
-                  </span>
-                </button>
+                {onOpenBlocker ? (
+                  <button
+                    type="button"
+                    className="w-full flex items-start gap-2 text-left border border-amber-200 bg-amber-50 rounded px-2.5 py-2 hover:border-amber-300 transition-colors"
+                    onClick={() => onOpenBlocker(blocker)}
+                    data-testid={`status-blocker-${blocker.fieldId || blocker.id}`}
+                  >
+                    <BlockerContent blocker={blocker} />
+                  </button>
+                ) : (
+                  <div
+                    className="w-full flex items-start gap-2 text-left border border-amber-200 bg-amber-50 rounded px-2.5 py-2"
+                    data-testid={`status-blocker-${blocker.fieldId || blocker.id}`}
+                  >
+                    <BlockerContent blocker={blocker} />
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -185,6 +187,25 @@ export function ReturnStatusSummary({ ret, workflow, onOpenBlocker }) {
         )}
       </div>
     </section>
+  );
+}
+
+function BlockerContent({ blocker }) {
+  return (
+    <>
+      <AlertTriangle className="w-3.5 h-3.5 text-amber-700 mt-0.5 shrink-0" />
+      <span className="flex-1 min-w-0">
+        <span className="block text-xs font-medium text-amber-950">
+          {blocker.label}
+        </span>
+        <span className="block text-[11px] text-amber-900/80 mt-0.5">
+          {blocker.detail}
+        </span>
+      </span>
+      <span className="text-[10px] text-amber-800 shrink-0">
+        Owner: {blocker.owner}
+      </span>
+    </>
   );
 }
 

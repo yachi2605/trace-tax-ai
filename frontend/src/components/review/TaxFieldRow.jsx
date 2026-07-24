@@ -67,38 +67,41 @@ export function TaxFieldRow({ field, isSelected, onSelect, onViewSource }) {
     <>
       <div
         data-testid={`tax-field-row-${field.id}`}
-        role="button"
-        tabIndex={0}
-        aria-label={`${field.label}. Status: ${field.status}. ${
-          typeof field.currentValue === "number" ? `Value ${formatCurrency(field.currentValue)}.` : ""
-        } Click to review.`}
-        onClick={() => onSelect?.(field.id)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onSelect?.(field.id);
-          }
-        }}
         className={cn(
-          "group border rounded-md bg-white p-3 cursor-pointer transition-all duration-150",
+          "group border rounded-md bg-white p-3 transition-all duration-150",
           "hover:shadow-sm hover:-translate-y-[1px]",
           borderClass
         )}
       >
-        {/* Top row: label + status */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
+        {/* Explicit field-selection control; review actions remain separate controls. */}
+        <button
+          type="button"
+          className="w-full flex items-start justify-between gap-3 text-left rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy focus-visible:ring-offset-2"
+          aria-pressed={isSelected}
+          aria-label={`${field.label}. Status: ${field.status}. ${
+            typeof field.currentValue === "number"
+              ? `Value ${formatCurrency(field.currentValue)}.`
+              : ""
+          } Open review details.`}
+          onClick={() => onSelect?.(field.id)}
+          data-testid={`select-field-${field.id}`}
+        >
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-2">
               <SeverityDot severity={field.severity || "none"} />
-              <p className="text-sm font-medium text-slate-900 truncate">{field.label}</p>
-            </div>
-            <p className="text-[11px] text-slate-500 font-ibm-mono mt-0.5">{field.formRef}</p>
-          </div>
+              <span className="text-sm font-medium text-slate-900 truncate group-hover:underline">
+                {field.label}
+              </span>
+            </span>
+            <span className="block text-[11px] text-slate-500 font-ibm-mono mt-0.5">
+              {field.formRef}
+            </span>
+          </span>
 
-          <div key={field.status} className="flex items-center gap-2 shrink-0 animate-fade-in">
+          <span key={field.status} className="flex items-center gap-2 shrink-0 animate-fade-in">
             <StatusBadge status={field.status} />
-          </div>
-        </div>
+          </span>
+        </button>
 
         {/* Value display */}
         <div className="mt-2.5 flex items-center justify-between gap-4">

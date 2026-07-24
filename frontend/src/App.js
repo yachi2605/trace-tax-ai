@@ -7,6 +7,7 @@ import { ReviewQueuePage } from "@/pages/ReviewQueuePage";
 import { ReturnWorkspacePage } from "@/pages/ReturnWorkspacePage";
 import { ActivityPage } from "@/pages/ActivityPage";
 import { DocumentsPage } from "@/pages/DocumentsPage";
+import { ReturnStatusPage } from "@/pages/ReturnStatusPage";
 
 function AppShell({ children }) {
   return (
@@ -41,6 +42,14 @@ export default function App() {
             element={
               <AppShell>
                 <ReturnWorkspacePage />
+              </AppShell>
+            }
+          />
+          <Route
+            path="/returns/:returnId/status"
+            element={
+              <AppShell>
+                <ReturnStatusPage />
               </AppShell>
             }
           />

@@ -1,8 +1,15 @@
 // TraceTax AI - App-wide store using React Context + useReducer.
 // Persists field-state changes, audit events, and correction history
-// for the active browser session. Everything is in-memory / mock.
+// for the active browser tab. All domain data and logic remain client-side / mock.
 
-import React, { createContext, useContext, useMemo, useReducer, useCallback } from "react";
+import React, {
+  createContext,
+  useContext,
+  useMemo,
+  useReducer,
+  useCallback,
+  useEffect,
+} from "react";
 import { FIELDS } from "@/data/reviewIssues";
 import { INITIAL_ACTIVITY } from "@/data/activity";
 import { RETURNS, CURRENT_USER } from "@/data/returns";
@@ -10,6 +17,7 @@ import { deriveJordanWorkflow, deriveReviewMetrics } from "@/data/workflow";
 
 const AppStateContext = createContext(null);
 const REVIEW_RETURN_ID = "ret-2025-001";
+const SESSION_STORAGE_KEY = "tracetax-review-session-v1";
 
 // Capture a full snapshot of the AI recommendation at the moment of decision.
 // This is what gets stored in each correctionHistory entry so the AI suggestion
@@ -36,6 +44,76 @@ const initialFields = FIELDS.reduce((acc, f) => {
   acc[f.id] = { ...f, correctionHistory: [] };
   return acc;
 }, {});
+
+const DERIVED_FIELDS = [
+  {
+    id: "field-ded-total",
+    componentIds: ["field-ded-mortgage", "field-ded-charitable"],
+    calculate: (fields) =>
+      numericValue(fields["field-ded-mortgage"]) +
+      numericValue(fields["field-ded-charitable"]) +
+      3714,
+  },
+  {
+    id: "field-overview-agi",
+    componentIds: ["field-wages-1a", "field-interest-2b", "field-adj-hsa"],
+    calculate: (fields) =>
+      numericValue(fields["field-wages-1a"]) +
+      numericValue(fields["field-interest-2b"]) -
+      numericValue(fields["field-adj-hsa"]) +
+      100,
+  },
+];
+
+function numericValue(field) {
+  return typeof field?.currentValue === "number" ? field.currentValue : 0;
+}
+
+function roundCurrency(value) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function recalculateDerivedFields(fields) {
+  const next = { ...fields };
+  DERIVED_FIELDS.forEach((definition) => {
+    const derivedField = next[definition.id];
+    if (!derivedField) return;
+    const calculatedValue = roundCurrency(definition.calculate(next));
+    next[definition.id] = {
+      ...derivedField,
+      currentValue: calculatedValue,
+      aiSuggestedValue: calculatedValue,
+      difference: 0,
+    };
+  });
+  return next;
+}
+
+function derivedFieldActivityEvents(previousFields, nextFields, currentUser) {
+  const timestamp = new Date().toISOString();
+  return DERIVED_FIELDS.flatMap((definition) => {
+    const before = previousFields[definition.id];
+    const after = nextFields[definition.id];
+    if (!before || !after || before.currentValue === after.currentValue) return [];
+    return [
+      {
+        id: `evt-derived-${definition.id}-${Date.now()}`,
+        actor: currentUser.name,
+        actorRole: "CPA",
+        action: "recalculated",
+        subject: after.label,
+        returnId: REVIEW_RETURN_ID,
+        fieldId: after.id,
+        sectionId: after.section,
+        docId: null,
+        regionId: null,
+        timestamp,
+        detail: `Automatically recalculated from component fields. Value updated from ${before.currentValue} to ${after.currentValue}.`,
+        icon: "Calculator",
+      },
+    ];
+  });
+}
 
 function syncReviewReturn(returns, fields) {
   return returns.map((ret) => {
@@ -92,7 +170,7 @@ function workflowTransitionEvent(state, nextFields, triggerField) {
   };
 }
 
-const initialState = {
+const baseInitialState = {
   currentUser: CURRENT_USER,
   returns: syncReviewReturn(RETURNS, initialFields),
   // Field values (mutable). Keyed by field.id.
@@ -104,6 +182,38 @@ const initialState = {
   queueFilter: "all",
   queueSearch: "",
 };
+
+function createInitialState() {
+  if (typeof window === "undefined") return baseInitialState;
+  try {
+    const saved = JSON.parse(window.sessionStorage.getItem(SESSION_STORAGE_KEY));
+    if (!saved || saved.version !== 1 || !saved.fields || !Array.isArray(saved.activity)) {
+      return baseInitialState;
+    }
+    const hydratedFields = recalculateDerivedFields(
+      Object.fromEntries(
+        FIELDS.map((field) => [
+          field.id,
+          {
+            ...initialFields[field.id],
+            ...(saved.fields[field.id] || {}),
+            correctionHistory: Array.isArray(saved.fields[field.id]?.correctionHistory)
+              ? saved.fields[field.id].correctionHistory
+              : [],
+          },
+        ])
+      )
+    );
+    return {
+      ...baseInitialState,
+      fields: hydratedFields,
+      returns: syncReviewReturn(RETURNS, hydratedFields),
+      activity: saved.activity,
+    };
+  } catch {
+    return baseInitialState;
+  }
+}
 
 function reducer(state, action) {
   switch (action.type) {
@@ -145,14 +255,23 @@ function reducer(state, action) {
           },
         ],
       };
-      const nextFields = { ...state.fields, [action.fieldId]: nextField };
+      const nextFields = recalculateDerivedFields({
+        ...state.fields,
+        [action.fieldId]: nextField,
+      });
       const transitionEvent = workflowTransitionEvent(state, nextFields, f);
+      const derivedEvents = derivedFieldActivityEvents(
+        state.fields,
+        nextFields,
+        state.currentUser
+      );
       return {
         ...state,
         fields: nextFields,
         returns: syncReviewReturn(state.returns, nextFields),
         activity: [
           ...(transitionEvent ? [transitionEvent] : []),
+          ...derivedEvents,
           {
             id: `evt-${Date.now()}`,
             actor: state.currentUser.name,
@@ -195,14 +314,23 @@ function reducer(state, action) {
           },
         ],
       };
-      const nextFields = { ...state.fields, [action.fieldId]: nextField };
+      const nextFields = recalculateDerivedFields({
+        ...state.fields,
+        [action.fieldId]: nextField,
+      });
       const transitionEvent = workflowTransitionEvent(state, nextFields, f);
+      const derivedEvents = derivedFieldActivityEvents(
+        state.fields,
+        nextFields,
+        state.currentUser
+      );
       return {
         ...state,
         fields: nextFields,
         returns: syncReviewReturn(state.returns, nextFields),
         activity: [
           ...(transitionEvent ? [transitionEvent] : []),
+          ...derivedEvents,
           {
             id: `evt-${Date.now()}`,
             actor: state.currentUser.name,
@@ -248,14 +376,23 @@ function reducer(state, action) {
           },
         ],
       };
-      const nextFields = { ...state.fields, [action.fieldId]: nextField };
+      const nextFields = recalculateDerivedFields({
+        ...state.fields,
+        [action.fieldId]: nextField,
+      });
       const transitionEvent = workflowTransitionEvent(state, nextFields, f);
+      const derivedEvents = derivedFieldActivityEvents(
+        state.fields,
+        nextFields,
+        state.currentUser
+      );
       return {
         ...state,
         fields: nextFields,
         returns: syncReviewReturn(state.returns, nextFields),
         activity: [
           ...(transitionEvent ? [transitionEvent] : []),
+          ...derivedEvents,
           {
             id: `evt-${Date.now()}`,
             actor: state.currentUser.name,
@@ -301,14 +438,23 @@ function reducer(state, action) {
           },
         ],
       };
-      const nextFields = { ...state.fields, [action.fieldId]: nextField };
+      const nextFields = recalculateDerivedFields({
+        ...state.fields,
+        [action.fieldId]: nextField,
+      });
       const transitionEvent = workflowTransitionEvent(state, nextFields, f);
+      const derivedEvents = derivedFieldActivityEvents(
+        state.fields,
+        nextFields,
+        state.currentUser
+      );
       return {
         ...state,
         fields: nextFields,
         returns: syncReviewReturn(state.returns, nextFields),
         activity: [
           ...(transitionEvent ? [transitionEvent] : []),
+          ...derivedEvents,
           {
             id: `evt-${Date.now()}`,
             actor: state.currentUser.name,
@@ -338,7 +484,10 @@ function reducer(state, action) {
           owner: "Jordan Lee",
         },
       };
-      const nextFields = { ...state.fields, [action.fieldId]: nextField };
+      const nextFields = recalculateDerivedFields({
+        ...state.fields,
+        [action.fieldId]: nextField,
+      });
       const transitionEvent = workflowTransitionEvent(state, nextFields, f);
       return {
         ...state,
@@ -369,7 +518,18 @@ function reducer(state, action) {
 }
 
 export function AppStateProvider({ children }) {
-  const [state, dispatch] = useReducer(reducer, initialState);
+  const [state, dispatch] = useReducer(reducer, undefined, createInitialState);
+
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(
+        SESSION_STORAGE_KEY,
+        JSON.stringify({ version: 1, fields: state.fields, activity: state.activity })
+      );
+    } catch {
+      // The prototype still works in-memory when browser storage is unavailable.
+    }
+  }, [state.activity, state.fields]);
 
   const acceptAi = useCallback((fieldId) => dispatch({ type: "ACCEPT_AI", fieldId }), []);
   const keepCurrent = useCallback(

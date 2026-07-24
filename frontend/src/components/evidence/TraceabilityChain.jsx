@@ -30,7 +30,23 @@ export function TraceabilityChain({ field, className }) {
 
   const isAggregation = t.type === "sum-of-multiple-sources";
   const steps = normalizeSteps(t.steps || []);
-  const returnValue = field.currentValue;
+  const tracedValue =
+    field.aiSuggestedValue !== null && field.aiSuggestedValue !== undefined
+      ? field.aiSuggestedValue
+      : evidence.sourceValue !== null && evidence.sourceValue !== undefined
+        ? evidence.sourceValue
+        : field.currentValue;
+  const showsCurrentComparison =
+    t.type !== "conflict" &&
+    field.currentValue !== null &&
+    field.currentValue !== undefined &&
+    tracedValue !== field.currentValue;
+  const terminalLabel =
+    t.type === "partial-match"
+      ? "Source-supported amount"
+      : t.type === "conflict"
+        ? "Reviewer source decision"
+        : "AI suggested return value";
 
   return (
     <div
@@ -81,23 +97,46 @@ export function TraceabilityChain({ field, className }) {
           </>
         )}
 
-        {/* Terminal node — return field */}
+        {/* Terminal node — the value actually supported or recommended by this chain */}
         <ChainArrow />
-        <ChainCard tone="navy" testId="chain-return-node">
+        <ChainCard tone="navy" testId="chain-recommendation-node">
           <div className="flex items-start gap-2">
             <Target className="w-3.5 h-3.5 mt-0.5 shrink-0" strokeWidth={2.25} />
             <div className="flex-1 min-w-0">
               <p className="text-[10px] uppercase tracking-wider font-semibold opacity-80">
-                Return field
+                {terminalLabel}
               </p>
               <p className="text-sm font-medium mt-0.5">{field.label}</p>
               <p className="text-[11px] font-ibm-mono opacity-80 mt-0.5">{field.formRef}</p>
             </div>
             <span className="font-ibm-mono tabular-nums text-sm font-bold">
-              {typeof returnValue === "number" ? formatCurrency(returnValue) : returnValue}
+              {typeof tracedValue === "number" ? formatCurrency(tracedValue) : tracedValue}
             </span>
           </div>
         </ChainCard>
+
+        {showsCurrentComparison && (
+          <>
+            <ChainArrow />
+            <ChainCard tone="amber" testId="chain-current-comparison">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider font-semibold">
+                    Current return value differs
+                  </p>
+                  <p className="text-[11px] mt-0.5">
+                    A reviewer decision is required before this value is treated as supported.
+                  </p>
+                </div>
+                <span className="font-ibm-mono tabular-nums text-sm font-bold shrink-0">
+                  {typeof field.currentValue === "number"
+                    ? formatCurrency(field.currentValue)
+                    : field.currentValue}
+                </span>
+              </div>
+            </ChainCard>
+          </>
+        )}
       </div>
     </div>
   );
@@ -223,6 +262,7 @@ function ChainCard({ children, tone, testId }) {
     navy: "border-navy bg-navy text-white",
     white: "border-slate-200 bg-white text-slate-800",
     slate: "border-slate-200 bg-slate-50 text-slate-700",
+    amber: "border-amber-300 bg-amber-50 text-amber-950",
   }[tone || "white"];
   return (
     <div

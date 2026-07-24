@@ -417,7 +417,7 @@ export const FIELDS = [
     issue: null,
     evidence: null,
     lockedReason:
-      "This total is calculated from three verified source fields (mortgage interest, charitable contributions, and state/local taxes). Edit the component values to update it.",
+      "This mock total recalculates from mortgage interest, charitable contributions, and a fixed $3,714 state/local-tax amount. Edit either reviewable component to see its downstream effect.",
     lockedComponentFieldIds: [
       "field-ded-mortgage",
       "field-ded-charitable",
@@ -609,7 +609,7 @@ export const FIELDS = [
     issue: null,
     evidence: null,
     lockedReason:
-      "AGI is calculated automatically from income, adjustments, and self-employment activity. Edit the underlying income or adjustment fields to change AGI.",
+      "This mock AGI recalculates from wages, interest, HSA adjustments, and a fixed $100 other-income adjustment. Edit a listed component to see its downstream effect.",
     lockedComponentFieldIds: ["field-wages-1a", "field-interest-2b", "field-adj-hsa"],
     lastVerifiedBy: null,
     lastVerifiedAt: null,

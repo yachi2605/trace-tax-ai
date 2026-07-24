@@ -11,6 +11,7 @@ export function WorkflowContextBar({
   document,
   currentView = "Return review",
   context,
+  returnHrefOverride,
   className,
 }) {
   if (!ret) return null;
@@ -40,7 +41,7 @@ export function WorkflowContextBar({
         </Link>
         <Crumb />
         <Link
-          to={returnHref({ ...returnContext, tab: "summary" })}
+          to={returnHrefOverride || returnHref({ ...returnContext, tab: "summary" })}
           className="hover:text-navy hover:underline"
         >
           {ret.clientName}
